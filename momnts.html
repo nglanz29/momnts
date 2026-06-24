@@ -45,6 +45,32 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .avatar{width:30px;height:30px;border-radius:50%;background:#3a3a5c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#aaa8f0;flex-shrink:0;}
 
 .main{flex:1;padding:28px 32px;min-width:0;overflow-y:auto;}
+
+/* ===== MOBILE SHELL (off-canvas nav) ===== */
+.mobile-header{display:none;}
+.nav-backdrop{display:none;}
+@media (max-width:760px){
+  .mobile-header{
+    display:flex;align-items:center;gap:12px;
+    position:fixed;top:0;left:0;right:0;height:52px;z-index:998;
+    background:var(--bg2);border-bottom:1px solid var(--border);padding:0 14px;
+  }
+  .mobile-header .hamburger{
+    background:none;border:none;color:var(--text);cursor:pointer;
+    padding:6px;display:flex;align-items:center;
+  }
+  .sidebar{
+    position:fixed;top:0;left:0;height:100vh;width:240px;z-index:1000;
+    transform:translateX(-100%);transition:transform .25s ease;
+  }
+  .app.nav-open .sidebar{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.6);}
+  .nav-backdrop{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,.55);z-index:999;
+  }
+  .app.nav-open .nav-backdrop{display:block;}
+  .main{padding:68px 16px 24px;}
+}
 .pg{display:none;}.pg.on{display:block;}
 .ph{margin-bottom:22px;}
 .pt{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:-.3px;}
@@ -489,6 +515,12 @@ textarea.mi{resize:none;height:68px;}
   </div>
 </div>
 <div class="app">
+
+<header class="mobile-header">
+  <button class="hamburger" onclick="toggleNav()" aria-label="Open menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+  <img id="mobile-logo-img" alt="momnts" style="height:24px;width:auto;display:block;">
+</header>
+<div class="nav-backdrop" onclick="closeNav()"></div>
 
 <nav class="sidebar">
   <div class="slogo">
@@ -4556,12 +4588,33 @@ const _origSubmitG = submitG;
 // (we'll patch after submitG is defined below)
 
 // ── INIT ──────────────────────────────────────────────────────────────
+// ===== Mobile off-canvas nav =====
+function toggleNav() {
+  var app = document.querySelector('.app');
+  if (app) app.classList.toggle('nav-open');
+}
+function closeNav() {
+  var app = document.querySelector('.app');
+  if (app) app.classList.remove('nav-open');
+}
+
 (function init() {
   // Apply brand logo images (embedded data URI)
   var slogoImg = document.getElementById('slogo-img');
   if (slogoImg) slogoImg.src = MOMNTS_LOGO;
   var obLogoImg = document.getElementById('ob-logo-img');
   if (obLogoImg) obLogoImg.src = MOMNTS_LOGO;
+  var mobileLogoImg = document.getElementById('mobile-logo-img');
+  if (mobileLogoImg) mobileLogoImg.src = MOMNTS_LOGO;
+  // Close the mobile drawer whenever a nav item (incl. dynamic favorites) is tapped
+  var sb = document.querySelector('.sidebar');
+  if (sb) sb.addEventListener('click', function(e) {
+    var t = e.target;
+    while (t && t !== sb) {
+      if (t.classList && t.classList.contains('ni')) { closeNav(); break; }
+      t = t.parentNode;
+    }
+  });
   const user = loadState();
   if (!user || !user.name) {
     // First run or name never set — show onboarding from step 1
