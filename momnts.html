@@ -237,6 +237,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .ro{font-size:11px;color:var(--text3);margin-bottom:3px;}
 .rw{font-size:18px;font-weight:700;}
 .rw span{font-size:13px;font-weight:400;color:var(--text3);}
+/* Records redesign: scanline texture utility + unified record rows + bars */
+.tex{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0px,rgba(255,255,255,.022) 1px,transparent 1px,transparent 4px);}
+.rec-overall-bar{height:16px;border-radius:8px;background:#3a2326;overflow:hidden;margin:10px 0 6px;}
+.rec-overall-bar i{display:block;height:100%;background:var(--accent);border-radius:8px;}
+.rec-meta{font-family:var(--font-ui);font-size:12px;color:var(--text2);margin-bottom:4px;}
+.rrow{display:flex;align-items:center;gap:11px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:11px 14px;margin-bottom:9px;
+  background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0px,rgba(255,255,255,.022) 1px,transparent 1px,transparent 4px);}
+.rrow img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
+.rrow-name{font-family:var(--font-ui);font-weight:700;font-size:14px;color:var(--text);min-width:46px;}
+.rrow-bar{flex:1;height:8px;border-radius:4px;background:#3a2326;overflow:hidden;min-width:50px;}
+.rrow-bar i{display:block;height:100%;background:var(--accent);border-radius:4px;}
+.rrow-wl{font-weight:700;font-size:15px;color:var(--text);min-width:46px;text-align:right;}
+.rrow-pct{font-size:12px;color:var(--text2);min-width:36px;text-align:right;}
 .sdots{display:flex;gap:5px;align-items:center;margin-bottom:16px;}
 .sd{width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
 .sw{background:var(--win);color:var(--win-text);}
@@ -723,9 +736,9 @@ textarea.mi{resize:none;height:68px;}
 <div id="records" class="pg">
   <div class="ph"><div class="pt">my records</div><div class="ps">your personal win-loss record from every game you've attended.</div></div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:8px;">
-    <div class="sc"><div class="sl">Wins</div><div class="sv" style="color:var(--win-text)" id="rec-wins">0</div><div class="ss" id="rec-win-pct">—</div></div>
-    <div class="sc"><div class="sl">Losses</div><div class="sv" style="color:var(--loss-text)" id="rec-losses">0</div><div class="ss">all-time</div></div>
-    <div class="sc"><div class="sl">Games logged</div><div class="sv" id="rec-total">0</div></div>
+    <div class="sc tex"><div class="sl">Wins</div><div class="sv" style="color:var(--win-text)" id="rec-wins">0</div></div>
+    <div class="sc tex"><div class="sl">Losses</div><div class="sv" style="color:var(--loss-text)" id="rec-losses">0</div></div>
+    <div class="sc tex"><div class="sl">Win rate</div><div class="sv" id="rec-winrate">—</div></div>
   </div>
   <div style="color:var(--text3);font-size:13px;padding:8px 0 4px;" id="rec-empty">Log some games to see your record here.</div>
   <div id="rec-content"></div>
@@ -4137,92 +4150,75 @@ function renderRecords() {
   var wins = canon.filter(function(g){ return computeMyResult(g) === 'W'; }).length;
   var losses = canon.filter(function(g){ return computeMyResult(g) === 'L'; }).length;
   var total = savedGames.length;
+  var winRate = (wins+losses) > 0 ? Math.round(wins/(wins+losses)*100) : null;
+
   var wEl = document.getElementById('rec-wins');
   var lEl = document.getElementById('rec-losses');
-  var tEl = document.getElementById('rec-total');
-  var pEl = document.getElementById('rec-win-pct');
+  var rEl = document.getElementById('rec-winrate');
   var eEl = document.getElementById('rec-empty');
   if (wEl) wEl.textContent = wins;
   if (lEl) lEl.textContent = losses;
-  if (tEl) tEl.textContent = total;
-  if (pEl) pEl.textContent = total > 0 ? Math.round(wins/total*100) + '% win rate' : '—';
+  if (rEl) rEl.textContent = winRate === null ? '—' : winRate + '%';
   if (eEl) eEl.style.display = total > 0 ? 'none' : 'block';
 
   var content = document.getElementById('rec-content');
   if (!content) return;
   if (total === 0) { content.innerHTML = ''; return; }
 
-  var html = '';
-
-  // ── Favorite teams record ────────────────────────────────────────
-  var allTeams = [].concat(TEAMS.mlb, TEAMS.nfl, TEAMS.nba, TEAMS.nhl);
-  var favTeams = allTeams.filter(function(t){ return favs.has(t.id); });
-  if (favTeams.length) {
-    var favRows = '';
-    favTeams.forEach(function(t){
-      var fullName = t.city + ' ' + t.name;
-      function isTeam(name){ return name && (name === fullName || name.indexOf(t.name) > -1); }
-      // Any game where this team was home or away
-      var favGames = savedGames.map(canonicalGame).filter(function(g){
-        return isTeam(g.homeTeam) || isTeam(g.awayTeam);
-      });
-      if (!favGames.length) return;
-      var w = 0, l = 0;
-      favGames.forEach(function(g){
-        if (g.homeScore === '' || g.awayScore === '' || g.homeScore == null || g.awayScore == null) return;
-        var hs = parseFloat(g.homeScore), as = parseFloat(g.awayScore);
-        if (isNaN(hs) || isNaN(as)) return;
-        var teamIsHome = isTeam(g.homeTeam);
-        var teamScore = teamIsHome ? hs : as;
-        var foeScore = teamIsHome ? as : hs;
-        if (teamScore > foeScore) w++;
-        else if (teamScore < foeScore) l++;
-      });
-      var pct = (w+l) > 0 ? Math.round(w/(w+l)*100) : 0;
-      favRows += '<div class="rcard"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><img src="'+t.logo+'" width="20" height="20" style="object-fit:contain;" alt=""><span class="ro" style="margin:0;">'+fullName+'</span></div><div class="rw">'+w+'–'+l+' <span>· '+favGames.length+' game'+(favGames.length!==1?'s':'')+(w+l>0?' · '+pct+'%':'')+'</span></div></div>';
-    });
-    if (favRows) {
-      html += '<div class="lbl" style="margin-top:22px;">Your favorite teams</div><div class="rgrid">'+favRows+'</div>';
-    }
+  // A unified record row: logo, name, win-rate bar, W–L, pct.
+  function recRow(logo, name, w, l) {
+    var p = (w+l) > 0 ? Math.round(w/(w+l)*100) : 0;
+    var img = logo ? '<img src="'+logo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
+    return '<div class="rrow">'+img+'<span class="rrow-name">'+name+'</span>'
+      + '<span class="rrow-bar"><i style="width:'+p+'%"></i></span>'
+      + '<span class="rrow-wl">'+w+'–'+l+'</span>'
+      + '<span class="rrow-pct">'+((w+l)>0?p+'%':'—')+'</span></div>';
+  }
+  function recOf(arr) {
+    return { w: arr.filter(function(g){return computeMyResult(g)==='W';}).length,
+             l: arr.filter(function(g){return computeMyResult(g)==='L';}).length };
   }
 
-  // ── Record by league ─────────────────────────────────────────────
+  var html = '';
+
+  // ── Overall win/loss bar ──
+  var fillPct = (wins+losses) > 0 ? Math.round(wins/(wins+losses)*100) : 0;
+  html += '<div class="lbl" style="margin-top:18px;">Overall</div>';
+  html += '<div class="rec-overall-bar"><i style="width:'+fillPct+'%"></i></div>';
+  html += '<div class="rec-meta"><span style="color:var(--win-text)">'+wins+' W</span> · <span style="color:var(--loss-text)">'+losses+' L</span> · '+total+' game'+(total!==1?'s':'')+'</div>';
+
+  // ── Your teams: your attended record for each favorite team (games you were there FOR) ──
+  var allTeams = [].concat(TEAMS.mlb, TEAMS.nfl, TEAMS.nba, TEAMS.nhl);
+  var favTeams = allTeams.filter(function(t){ return favs.has(t.id); });
+  var teamRows = '';
+  favTeams.forEach(function(t){
+    var fullName = t.city + ' ' + t.name;
+    var myGames = canon.filter(function(g){ return g.myTeam && (g.myTeam === fullName || g.myTeam.indexOf(t.name) > -1); });
+    if (!myGames.length) return;
+    var r = recOf(myGames);
+    teamRows += recRow(t.logo, fullName, r.w, r.l);
+  });
+  if (teamRows) html += '<div class="lbl" style="margin-top:22px;">Your teams</div>'+teamRows;
+
+  // ── Record by league ──
   var leagues = ['MLB','NFL','NBA','NHL'];
   var leagueRows = '';
   leagues.forEach(function(lg){
-    var lgGames = savedGames.map(canonicalGame).filter(function(g){ return g.league === lg; });
+    var lgGames = canon.filter(function(g){ return g.league === lg; });
     if (!lgGames.length) return;
-    var w = lgGames.filter(function(g){ return computeMyResult(g)==='W'; }).length;
-    var l = lgGames.filter(function(g){ return computeMyResult(g)==='L'; }).length;
-    var pct = (w+l) > 0 ? Math.round(w/(w+l)*100) : 0;
-    leagueRows += '<div class="rcard"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/'+lg.toLowerCase()+'.png" width="18" height="18" style="object-fit:contain;" alt=""><span class="ro" style="margin:0;">'+lg+'</span></div><div class="rw">'+w+'–'+l+' <span>· '+lgGames.length+' game'+(lgGames.length!==1?'s':'')+(w+l>0?' · '+pct+'%':'')+'</span></div></div>';
+    var r = recOf(lgGames);
+    leagueRows += recRow('https://a.espncdn.com/i/teamlogos/leagues/500/'+lg.toLowerCase()+'.png', lg, r.w, r.l);
   });
-  if (leagueRows) html += '<div class="lbl" style="margin-top:22px;">Record by league</div><div class="rgrid">'+leagueRows+'</div>';
+  if (leagueRows) html += '<div class="lbl" style="margin-top:22px;">Record by league</div>'+leagueRows;
 
-  // ── Home vs Away (from the user's perspective: were THEY at a home or away game) ──
-  var homeG = savedGames.map(canonicalGame).filter(function(g){ return g.myTeam && g.myTeam === g.homeTeam; });
-  var awayG = savedGames.map(canonicalGame).filter(function(g){ return g.myTeam && g.myTeam === g.awayTeam; });
-  function rec(arr){ var w=arr.filter(function(g){return computeMyResult(g)==='W';}).length; var l=arr.filter(function(g){return computeMyResult(g)==='L';}).length; return w+'–'+l; }
+  // ── Home vs away (from the user's perspective) ──
+  var homeG = canon.filter(function(g){ return g.myTeam && g.myTeam === g.homeTeam; });
+  var awayG = canon.filter(function(g){ return g.myTeam && g.myTeam === g.awayTeam; });
+  function recStr(arr){ var r = recOf(arr); return r.w+'–'+r.l; }
   if (homeG.length || awayG.length) {
     html += '<div class="lbl" style="margin-top:22px;">Home vs away</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:11px;">';
-    html += '<div class="sc"><div class="sl">At home</div><div class="sv">'+rec(homeG)+'</div><div class="ss">'+homeG.length+' game'+(homeG.length!==1?'s':'')+'</div></div>';
-    html += '<div class="sc"><div class="sl">On the road</div><div class="sv">'+rec(awayG)+'</div><div class="ss">'+awayG.length+' game'+(awayG.length!==1?'s':'')+'</div></div>';
-    html += '</div>';
-  }
-
-  // ── Most-seen opponents ──────────────────────────────────────────
-  var oppCounts = {};
-  savedGames.map(canonicalGame).forEach(function(g){
-    if (!g.myTeam) { if (g.opponent) oppCounts[g.opponent] = (oppCounts[g.opponent]||0)+1; return; }
-    var foe = g.myTeam === g.homeTeam ? g.awayTeam : g.homeTeam;
-    if (foe) oppCounts[foe] = (oppCounts[foe]||0)+1;
-  });
-  var oppList = Object.keys(oppCounts).map(function(o){ return {name:o, n:oppCounts[o]}; }).sort(function(a,b){ return b.n - a.n; }).slice(0,5);
-  if (oppList.length) {
-    html += '<div class="lbl" style="margin-top:22px;">Most-seen opponents</div><div class="rgrid">';
-    oppList.forEach(function(o){
-      html += '<div class="rcard"><span class="ro" style="margin:0 0 4px;">vs '+o.name+'</span><div class="rw" style="color:var(--text2);">'+o.n+' game'+(o.n!==1?'s':'')+'</div></div>';
-    });
+    html += '<div class="sc tex"><div class="sl">At home</div><div class="sv">'+recStr(homeG)+'</div><div class="ss">'+homeG.length+' game'+(homeG.length!==1?'s':'')+'</div></div>';
+    html += '<div class="sc tex"><div class="sl">On the road</div><div class="sv">'+recStr(awayG)+'</div><div class="ss">'+awayG.length+' game'+(awayG.length!==1?'s':'')+'</div></div>';
     html += '</div>';
   }
 
