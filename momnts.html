@@ -84,7 +84,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 
 .gl{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
 .gc{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s,background .15s;}
-.gc:hover{border-color:var(--border2);background:var(--bg4);}
+.gc:hover{border-color:var(--border2);background-color:var(--bg4);}
 .db{min-width:40px;text-align:center;background:var(--bg4);border-radius:var(--r);padding:6px 4px;}
 .dm{font-size:9px;text-transform:uppercase;color:var(--text3);}
 .dd{font-size:18px;font-weight:700;line-height:1.1;}
@@ -380,6 +380,8 @@ textarea.mi{resize:none;height:68px;}
 
 /* EXPANDABLE HOME CARDS */
 .xcard{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;transition:border-color .15s;cursor:pointer;}
+/* Brand scanline texture on all card surfaces (subtle depth, matches the records page + ticket stub) */
+.sc,.gc,.pcard,.rcard,.vcard,.xcard{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0px,rgba(255,255,255,.022) 1px,transparent 1px,transparent 4px);}
 /* Fan story */
 #fanstory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:8px;}
 .fs-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;}
@@ -544,7 +546,7 @@ textarea.mi{resize:none;height:68px;}
   <button class="ni" onclick="go('stadiums',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>stadiums</button>
   <button class="ni" onclick="go('records',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>my records</button>
   <button class="ni" onclick="go('players',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>players seen</button>
-  <button class="ni" onclick="go('moments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>moments</button>
+  <button class="ni" onclick="go('moments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>momnts</button>
   <div class="snl" style="margin-top:6px;">my teams</div>
   <div id="favnav"></div>
   <button class="ni" onclick="go('myteams',this)" style="color:var(--accent);margin-top:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>manage teams</button>
@@ -584,8 +586,8 @@ textarea.mi{resize:none;height:68px;}
     </div>
     <div class="cl-item" id="cl-3" onclick="clAction('moments')">
       <div class="cl-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2"/></svg></div>
-      <div class="cl-label">log a historic moment you witnessed</div>
-      <div class="cl-action">add moment →</div>
+      <div class="cl-label">log a historic momnt you witnessed</div>
+      <div class="cl-action">add momnt →</div>
     </div>
     <div class="cl-item" id="cl-4" onclick="clAction('myteams')">
       <div class="cl-check"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2"/></svg></div>
@@ -637,12 +639,12 @@ textarea.mi{resize:none;height:68px;}
     <!-- Moments -->
     <div class="xcard" onclick="toggleCard(this)">
       <div class="xcard-hdr">
-        <div><div class="sl">Moments</div><div class="sv" id="hc-moments">0</div><div class="ss">you were there</div></div>
+        <div><div class="sl">momnts</div><div class="sv" id="hc-moments">0</div><div class="ss">you were there</div></div>
         <svg class="xcard-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="xcard-body"><div class="xcard-inner" id="hc-moments-body">
-        <div style="color:var(--text3);font-size:12px;padding:6px 0;">No moments logged yet.</div>
-        <span class="xcard-viewall" onclick="event.stopPropagation();go('moments',null)">view all moments →</span>
+        <div style="color:var(--text3);font-size:12px;padding:6px 0;">No momnts logged yet.</div>
+        <span class="xcard-viewall" onclick="event.stopPropagation();go('moments',null)">view all momnts →</span>
       </div></div>
     </div>
 
@@ -654,7 +656,7 @@ textarea.mi{resize:none;height:68px;}
   <div class="lbl">Recent games</div>
   <div id="home-recent-games"><div style="color:var(--text3);font-size:13px;padding:8px 0 4px;">No games logged yet — <span style="color:var(--accent);cursor:pointer;" onclick="go('log',document.querySelectorAll('.ni')[1])">log your first game</span>.</div></div>
   <div class="lbl">Trophy case</div>
-  <div id="home-moments"><div style="color:var(--text3);font-size:13px;padding:8px 0 4px;">No moments logged yet — <span style="color:var(--accent);cursor:pointer;" onclick="go('moments',document.querySelectorAll('.ni')[5])">add a moment</span>.</div></div>
+  <div id="home-moments"><div style="color:var(--text3);font-size:13px;padding:8px 0 4px;">No momnts logged yet — <span style="color:var(--accent);cursor:pointer;" onclick="go('moments',document.querySelectorAll('.ni')[5])">add a momnt</span>.</div></div>
   <div class="lbl" style="margin-top:20px;">Stadium quest</div>
   <div class="pr"><div class="pl"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png">MLB</div><div class="pt2"><div class="pf" id="sq-mlb-bar" style="width:0%;background:#e63946"></div></div><div class="pc" id="sq-mlb-txt">0/30</div></div>
   <div class="pr"><div class="pl"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png">NFL</div><div class="pt2"><div class="pf" id="sq-nfl-bar" style="width:0%;background:#378add"></div></div><div class="pc" id="sq-nfl-txt">0/32</div></div>
@@ -761,10 +763,10 @@ textarea.mi{resize:none;height:68px;}
 
 <!-- MOMENTS -->
 <div id="moments" class="pg">
-  <div class="ph"><div class="pt">moments</div><div class="ps">the historic, the rare, the unforgettable — you were there.</div></div>
+  <div class="ph"><div class="pt">momnts</div><div class="ps">the historic, the rare, the unforgettable — you were there.</div></div>
   <button class="abtn" onclick="openMomentModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>log a moment</button>
   <div id="moments-list">
-    <div style="color:var(--text3);font-size:13px;padding:16px 0;">No moments logged yet. Hit "Log a moment" above to add one.</div>
+    <div style="color:var(--text3);font-size:13px;padding:16px 0;">No momnts logged yet. Hit "Log a momnt" above to add one.</div>
   </div>
 </div>
 
@@ -779,7 +781,7 @@ textarea.mi{resize:none;height:68px;}
   <div class="tsect"><div class="thdr"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png">NHL</div><div class="tgrid" id="gnhl"></div></div>
   <div class="lbl" style="margin-top:24px;">Data &amp; backup</div>
   <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;">
-    <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:13px;">Your games, stadiums, players, and moments live in this browser. Back them up to a file you can keep safe or move to another device.</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:13px;">Your games, stadiums, players, and momnts live in this browser. Back them up to a file you can keep safe or move to another device.</div>
     <div style="display:flex;gap:9px;flex-wrap:wrap;">
       <button id="export-btn" onclick="exportData()" style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:9px 16px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Back up my data</button>
       <button onclick="triggerImport()" style="background:none;border:1px solid var(--border2);border-radius:8px;padding:9px 16px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Restore from backup</button>
@@ -905,7 +907,7 @@ textarea.mi{resize:none;height:68px;}
 <div id="moment-modal" style="visibility:hidden;opacity:0;pointer-events:none;position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;transition:opacity .18s;">
   <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;width:460px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.9);">
     <div style="padding:20px 22px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div style="font-size:16px;font-weight:700;">Log a moment</div>
+      <div style="font-size:16px;font-weight:700;">Log a momnt</div>
       <button onclick="closeMomentModal()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1;padding:0;">×</button>
     </div>
     <div style="padding:8px 22px 4px;font-size:12.5px;color:var(--text3);line-height:1.5;">The historic, the rare, the unforgettable — a no-hitter, a walk-off, a record night. Anything you witnessed in person.</div>
@@ -920,7 +922,7 @@ textarea.mi{resize:none;height:68px;}
     </div>
     <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;gap:9px;justify-content:flex-end;flex-shrink:0;">
       <button onclick="closeMomentModal()" style="background:none;border:1px solid var(--border2);border-radius:8px;padding:8px 16px;color:var(--text2);font-size:13px;cursor:pointer;">Cancel</button>
-      <button onclick="submitMoment()" style="background:var(--accent);border:none;border-radius:8px;padding:8px 20px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Save moment</button>
+      <button onclick="submitMoment()" style="background:var(--accent);border:none;border-radius:8px;padding:8px 20px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Save momnt</button>
     </div>
   </div>
 </div>
@@ -3049,7 +3051,7 @@ function renderMoments() {
   var el = document.getElementById('moments-list');
   if (!el) return;
   if (!savedMoments || savedMoments.length === 0) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0;line-height:1.6;">No moments yet. Playoff games you log are added here automatically \u2014 or hit <span style="color:var(--accent);">Log a moment</span> to add a no-hitter, a walk-off, a record night, anything you witnessed.</div>';
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0;line-height:1.6;">No momnts yet. Playoff games you log are added here automatically \u2014 or hit <span style="color:var(--accent);">Log a momnt</span> to add a no-hitter, a walk-off, a record night, anything you witnessed.</div>';
     return;
   }
   el.innerHTML = savedMoments.map(function(m){
@@ -3057,8 +3059,8 @@ function renderMoments() {
     var badgeBg = m.type === 'Playoff' ? 'rgba(244,166,42,.15)' : 'rgba(108,99,255,.15)';
     var badgeCol = m.type === 'Playoff' ? '#f0c060' : '#a9a2ff';
     var d = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-    var delBtn = m.gameId ? '' : '<button onclick="deleteMoment(\''+m.id+'\',event)" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px;margin-left:auto;align-self:flex-start;" title="Delete moment">×</button>';
-    return '<div class="mc" style="border-left-color:'+color+';display:flex;align-items:flex-start;gap:8px;"><div style="flex:1;min-width:0;"><div class="mt">'+m.title+'</div><div class="mm">'+d+(m.venue?' · '+m.venue:'')+(m.league?' · '+m.league:'')+'</div><span class="mb" style="background:'+badgeBg+';color:'+badgeCol+'">'+(m.type||'Moment')+'</span></div>'+delBtn+'</div>';
+    var delBtn = m.gameId ? '' : '<button onclick="deleteMoment(\''+m.id+'\',event)" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px;margin-left:auto;align-self:flex-start;" title="Delete momnt">×</button>';
+    return '<div class="mc" style="border-left-color:'+color+';display:flex;align-items:flex-start;gap:8px;"><div style="flex:1;min-width:0;"><div class="mt">'+m.title+'</div><div class="mm">'+d+(m.venue?' · '+m.venue:'')+(m.league?' · '+m.league:'')+'</div><span class="mb" style="background:'+badgeBg+';color:'+badgeCol+'">'+(m.type||'Momnt')+'</span></div>'+delBtn+'</div>';
   }).join('');
 }
 
@@ -3135,14 +3137,14 @@ function closeMomentModal() {
 function submitMoment() {
   var title = document.getElementById('mom-title').value.trim();
   var date = document.getElementById('mom-date').value;
-  if (!title) { alert('Give the moment a title.'); return; }
-  if (!date) { alert('Pick a date for the moment.'); return; }
+  if (!title) { alert('Give the momnt a title.'); return; }
+  if (!date) { alert('Pick a date for the momnt.'); return; }
   var moment = {
     title: title,
     date: date,
     venue: document.getElementById('mom-venue').value.trim(),
     league: document.getElementById('mom-league').value,
-    type: document.getElementById('mom-type').value.trim() || 'Moment'
+    type: document.getElementById('mom-type').value.trim() || 'Momnt'
   };
   moment.id = 'm' + Date.now();
   if (!savedMoments) savedMoments = [];
@@ -3160,7 +3162,7 @@ function submitMoment() {
 
 function deleteMoment(id, e) {
   if (e) e.stopPropagation();
-  if (!confirm('Delete this moment?')) return;
+  if (!confirm('Delete this momnt?')) return;
   savedMoments = savedMoments.filter(function(m){ return m.id !== id; });
   LS.save('moments', savedMoments);
   renderMoments();
@@ -3974,12 +3976,12 @@ function renderHome() {
   var mBody = document.getElementById('hc-moments-body');
   if (mBody) {
     if (!savedMoments || savedMoments.length === 0) {
-      mBody.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:6px 0;">No moments logged yet.</div><span class="xcard-viewall" onclick="event.stopPropagation();go(\'moments\',null)">View all moments \u2192</span>';
+      mBody.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:6px 0;">No momnts logged yet.</div><span class="xcard-viewall" onclick="event.stopPropagation();go(\'moments\',null)">View all momnts \u2192</span>';
     } else {
       mBody.innerHTML = savedMoments.slice(0,4).map(function(m){
         var dd = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '';
         return '<div class="xcard-row"><div class="xcard-row-left"><div><div>'+m.title+'</div><div class="xcard-sub">'+dd+(m.venue?' \u00b7 '+m.venue:'')+'</div></div></div></div>';
-      }).join('') + '<span class="xcard-viewall" onclick="event.stopPropagation();go(\'moments\',null)">View all moments \u2192</span>';
+      }).join('') + '<span class="xcard-viewall" onclick="event.stopPropagation();go(\'moments\',null)">View all momnts \u2192</span>';
     }
   }
 
@@ -3997,11 +3999,11 @@ function renderHome() {
   var homeMomEl = document.getElementById('home-moments');
   if (homeMomEl) {
     if (!savedMoments || savedMoments.length === 0) {
-      homeMomEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0 4px;line-height:1.6;">Your trophy case is empty for now. Playoff games you log land here automatically \u2014 or <span style="color:var(--accent);cursor:pointer;" onclick="go(\'moments\',document.querySelectorAll(\'.ni\')[5]);setTimeout(openMomentModal,200);">add a moment</span> you\u2019ll never forget.</div>';
+      homeMomEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0 4px;line-height:1.6;">Your trophy case is empty for now. Playoff games you log land here automatically \u2014 or <span style="color:var(--accent);cursor:pointer;" onclick="go(\'moments\',document.querySelectorAll(\'.ni\')[5]);setTimeout(openMomentModal,200);">add a momnt</span> you\u2019ll never forget.</div>';
     } else {
       homeMomEl.innerHTML = savedMoments.slice(0,4).map(function(m){
         var dd = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-        return '<div class="mc" style="border-left-color:#f4a62a"><div class="mt">'+m.title+'</div><div class="mm">'+dd+(m.venue?' \u00b7 '+m.venue:'')+(m.league?' \u00b7 '+m.league:'')+'</div><span class="mb" style="background:rgba(244,166,42,.15);color:#f0c060">'+(m.type||'Moment')+'</span></div>';
+        return '<div class="mc" style="border-left-color:#f4a62a"><div class="mt">'+m.title+'</div><div class="mm">'+dd+(m.venue?' \u00b7 '+m.venue:'')+(m.league?' \u00b7 '+m.league:'')+'</div><span class="mb" style="background:rgba(244,166,42,.15);color:#f0c060">'+(m.type||'Momnt')+'</span></div>';
       }).join('');
     }
   }
