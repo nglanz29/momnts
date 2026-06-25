@@ -101,49 +101,46 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .gsr{font-size:10px;color:var(--text3);margin-top:1px;}
 
 /* ===== TICKET STUB ===== */
-.ticket{position:relative;display:flex;min-height:128px;border-radius:14px;overflow:hidden;
+.ticket{position:relative;display:flex;min-height:140px;border-radius:14px;overflow:hidden;
   box-shadow:0 8px 26px rgba(0,0,0,.5);cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;}
 .ticket:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(0,0,0,.65);}
-.ticket-body{flex:1;display:flex;align-items:center;padding:0 22px;position:relative;gap:20px;min-width:0;}
-.tk-scrim{position:absolute;inset:0;background:radial-gradient(ellipse at center, rgba(0,0,0,.34) 0%, rgba(0,0,0,.5) 100%);pointer-events:none;}
-.tk-logos{display:flex;align-items:center;gap:11px;flex-shrink:0;position:relative;z-index:1;}
-.tk-logos img{width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));}
-.tk-vs{font-family:'Barlow Condensed','Inter',sans-serif;font-size:14px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.65);}
-.tk-center{flex:1;text-align:center;min-width:0;position:relative;z-index:1;color:#fff;}
-.tk-teams{font-family:'Barlow Condensed','Inter',sans-serif;font-size:21px;font-weight:700;letter-spacing:.4px;line-height:1.02;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tk-rule{width:56px;height:1px;background:rgba(255,255,255,.4);margin:7px auto;}
-.tk-venue{font-size:11.5px;font-weight:600;letter-spacing:.2px;color:rgba(255,255,255,.95);text-shadow:0 1px 3px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tk-dt{font-family:'JetBrains Mono','Courier New',monospace;font-size:9px;letter-spacing:.8px;color:rgba(255,255,255,.72);margin-top:4px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tk-badges{display:flex;gap:6px;justify-content:center;margin-top:7px;flex-wrap:wrap;}
-.tk-with{font-size:10px;font-style:italic;color:rgba(255,255,255,.85);margin-top:5px;text-shadow:0 1px 3px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ticket-body.has-photo .tk-scrim{background:rgba(0,0,0,.55);}
-.tk-badge{font-family:'JetBrains Mono','Courier New',monospace;font-size:8px;font-weight:500;letter-spacing:.6px;padding:2px 7px;border-radius:4px;text-transform:uppercase;background:rgba(255,255,255,.18);color:#fff;}
+.ticket-body{flex:1;position:relative;display:flex;flex-direction:column;justify-content:center;gap:9px;padding:16px 24px;min-width:0;overflow:hidden;}
+.tk-scrim{position:absolute;inset:0;background:rgba(0,0,0,.16);pointer-events:none;}
+.ticket-body.has-photo .tk-scrim{background:rgba(0,0,0,.5);}
+.tk-inner{position:relative;z-index:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
+.tk-date{font-family:var(--font-ui);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tk-match{display:flex;align-items:center;gap:11px;min-width:0;overflow:hidden;}
+.tk-match img{width:36px;height:36px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));}
+.tk-team{font-family:'Barlow Condensed','Inter',sans-serif;font-size:25px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.tk-dot{font-family:'Barlow Condensed','Inter',sans-serif;font-size:19px;color:rgba(255,255,255,.5);flex-shrink:0;}
+.tk-venue{font-family:var(--font-ui);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tk-with{font-size:10px;font-style:italic;color:rgba(255,255,255,.82);text-shadow:0 1px 3px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tk-perf{position:relative;width:0;border-left:2px dashed rgba(255,255,255,.4);flex-shrink:0;}
 .tk-perf::before,.tk-perf::after{content:'';position:absolute;left:-9px;width:18px;height:18px;border-radius:50%;background:var(--bg);}
 .tk-perf::before{top:-9px;} .tk-perf::after{bottom:-9px;}
-.tk-counterfoil{width:144px;flex-shrink:0;background:#16191b;color:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 10px;gap:2px;border-left:1px dashed rgba(238,240,238,.18);}
-.tk-cf-label{font-family:'JetBrains Mono','Courier New',monospace;font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);}
-.tk-cf-score{font-family:'Space Mono','JetBrains Mono',monospace;font-size:28px;font-weight:700;line-height:.9;letter-spacing:-.5px;color:var(--paper);}
+.tk-counterfoil{width:150px;flex-shrink:0;background:#16191b;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0px,rgba(255,255,255,.045) 1px,transparent 1px,transparent 4px);color:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 10px;gap:5px;}
+.tk-cf-logo{height:13px;width:62px;background-position:center;background-repeat:no-repeat;background-size:contain;opacity:.92;}
+.tk-cf-no{font-family:var(--font-ui);font-size:8.5px;letter-spacing:1.5px;color:var(--text2);}
+.tk-cf-score{font-family:'Space Mono','JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:.95;letter-spacing:-.5px;color:var(--paper);}
+.tk-cf-score .win{color:#1FB574;}
+.tk-cf-sep{color:var(--text2);}
 .tk-cf-noscore{font-family:'Space Mono','JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--text3);}
-.tk-result{font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 11px;border-radius:20px;text-transform:uppercase;margin-top:3px;}
+.tk-result{font-family:var(--font-ui);font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 11px;border-radius:20px;text-transform:uppercase;}
 .tk-result.win{background:#1FB574;color:#0D0E10;} .tk-result.loss{background:#b34a44;color:#fff;} .tk-result.tie{background:#5a6560;color:#fff;}
-.tk-seat-line{font-family:'JetBrains Mono','Courier New',monospace;font-size:8px;letter-spacing:.5px;color:var(--text3);margin-top:5px;text-align:center;max-width:124px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tk-barcode{display:flex;height:20px;align-items:stretch;margin-top:7px;}
+.tk-barcode{display:flex;height:20px;align-items:stretch;}
 .tk-barcode span{background:rgba(238,240,238,.7);}
 
 @media (max-width:560px){
-  .ticket{min-height:108px;}
-  .ticket-body{padding:0 13px;gap:11px;}
-  .tk-logos{gap:6px;}
-  .tk-logos img{width:32px;height:32px;}
-  .tk-vs{font-size:11px;}
-  .tk-teams{font-size:16px;}
-  .tk-venue{font-size:10px;}
-  .tk-dt{font-size:7.5px;letter-spacing:.4px;}
-  .tk-badge{font-size:7px;padding:2px 5px;}
-  .tk-counterfoil{width:104px;padding:10px 6px;}
-  .tk-cf-score{font-size:25px;}
-  .tk-rule{margin:5px auto;}
+  .ticket{min-height:120px;}
+  .ticket-body{padding:13px 15px;gap:7px;}
+  .tk-match{gap:8px;}
+  .tk-match img{width:28px;height:28px;}
+  .tk-team{font-size:18px;}
+  .tk-dot{font-size:15px;}
+  .tk-date{font-size:8.5px;letter-spacing:1.2px;}
+  .tk-venue{font-size:9px;letter-spacing:.6px;}
+  .tk-counterfoil{width:112px;padding:10px 7px;gap:4px;}
+  .tk-cf-score{font-size:22px;}
 }
 
 .pr{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
@@ -1375,6 +1372,15 @@ function venueCityState(g) {
     }
   }
   return '';
+}
+
+// Next permanent serial number for a newly logged game (max existing + 1).
+function nextMomntNo() {
+  var n = 0;
+  if (typeof savedGames !== 'undefined' && savedGames) {
+    savedGames.forEach(function(g){ if (g.momntNo && g.momntNo > n) n = g.momntNo; });
+  }
+  return n + 1;
 }
 
 let favs = new Set();
@@ -2671,6 +2677,7 @@ function submitG() {
   var gameId = 'g' + Date.now();
   var game = {
     id: gameId,
+    momntNo: nextMomntNo(),
     date: date,
     // canonical fields
     homeTeam: homeTeam,
@@ -2770,64 +2777,67 @@ function gameCardHtml(g) {
   var homeLogo = g.homeLogo || lookupTeamLogo(g.homeTeam, g.league) || '';
   var awayC = teamColorsFor(awayLogo, g.league);
   var homeC = teamColorsFor(homeLogo, g.league);
-  // Diagonal gradient: away color (left) -> dark middle -> home color (right)
-  var grad = 'linear-gradient(105deg,'+awayC[0]+' 0%, #161616 50%, '+homeC[0]+' 100%)';
+  // Full team gradient: away color (left) -> home color (right), plus a faint
+  // scanline texture layered over the whole ticket.
+  var grad = 'linear-gradient(105deg,'+awayC[0]+' 0%, '+homeC[0]+' 100%)';
+  var scan = 'repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0px,rgba(255,255,255,.05) 1px,transparent 1px,transparent 4px)';
 
   var awayImg = awayLogo ? '<img src="'+awayLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
   var homeImg = homeLogo ? '<img src="'+homeLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
 
-  var badges = '<span class="tk-badge">'+(g.league||'Game')+'</span>';
-  if (g.isPlayoff) badges += '<span class="tk-badge">Playoff</span>';
-  if (g.photo) badges += '<span class="tk-badge">📷</span>';
+  // Venue line: "Venue · seat/section" if provided, else "Venue · City, ST".
+  var venueDetail = g.seat ? g.seat : venueCityState(g);
+  var venueText = g.venue ? (g.venue + (venueDetail ? ' · ' + venueDetail : '')) : (venueDetail || '');
+  var venueHtml = venueText ? '<div class="tk-venue">'+venueText+'</div>' : '';
 
-  // Seat parsing: try to split a "Sec 134, Row 12, Seat 8"-style string into parts
-  var seatHtml = '';
-  if (g.seat) {
-    seatHtml = '<div class="tk-seat-line">'+g.seat+'</div>';
-  }
+  // Companions line (optional, under the venue)
+  var companionsHtml = g.companions ? '<div class="tk-with">with '+g.companions+'</div>' : '';
 
-  // Companions line (printed in the body under the date)
-  var companionsHtml = g.companions ? '<div class="tk-with">With '+g.companions+'</div>' : '';
-
-  // Counterfoil: final score is the hero; result pill; seat; barcode
+  // Counterfoil score: away · home, winning number in signal green; result pill from my perspective.
   var resultPill = myResult ? '<div class="tk-result '+(myResult==='W'?'win':myResult==='L'?'loss':'tie')+'">'+(myResult==='W'?'Win':myResult==='L'?'Loss':'Tie')+'</div>' : '';
+  var aNum = parseInt(g.awayScore,10), hNum = parseInt(g.homeScore,10);
+  var aCls = (!isNaN(aNum) && !isNaN(hNum) && aNum > hNum) ? ' class="win"' : '';
+  var hCls = (!isNaN(aNum) && !isNaN(hNum) && hNum > aNum) ? ' class="win"' : '';
   var scoreBlock = score
-    ? '<div class="tk-cf-label">Final Score</div><div class="tk-cf-score">'+score+'</div>'+resultPill
-    : '<div class="tk-cf-label">Attended</div><div class="tk-cf-noscore">—</div>';
+    ? '<div class="tk-cf-score"><span'+aCls+'>'+g.awayScore+'</span><span class="tk-cf-sep"> · </span><span'+hCls+'>'+g.homeScore+'</span></div>'+resultPill
+    : '<div class="tk-cf-noscore">—</div>';
+
+  // Permanent serial number, zero-padded to 4 digits.
+  var serial = 'NO. ' + ('000' + (g.momntNo || 0)).slice(-4);
 
   // Deterministic barcode from the game id — real barcode look: full-height bars
   // of varied WIDTHS (1–3px) with varied gaps, not a bar chart of varied heights.
   var bars = '';
   var seed = 0; for (var i=0;i<g.id.length;i++) seed += g.id.charCodeAt(i);
-  for (var b=0;b<28;b++){
+  for (var b=0;b<24;b++){
     var w = 1 + ((seed*(b+2)) % 3);            // bar width 1–3px
     var gap = 1 + ((seed*(b+5)) % 2);          // gap 1–2px
     bars += '<span style="width:'+w+'px;margin-right:'+gap+'px"></span>';
   }
 
-  // If a photo exists, layer it faintly behind the gradient for a richer keepsake feel
+  // Scanlines over the gradient (and optional photo) so the body matches the counterfoil.
   var bodyBg = g.photo
-    ? 'background:'+grad+', url(\''+g.photo+'\') center/cover;'
-    : 'background:'+grad+';';
+    ? 'background:'+scan+', '+grad+', url(\''+g.photo+'\') center/cover;'
+    : 'background:'+scan+', '+grad+';';
+
+  var dateText = weekday+' · '+mo+' '+day+' · '+yr;
 
   return '<div class="ticket" data-gameid="'+g.id+'" data-league="'+g.league+'" data-result="'+(myResult||'')+'" onclick="openGameDetail(\''+g.id+'\')">'
     + '<div class="ticket-body'+(g.photo?' has-photo':'')+'" style="'+bodyBg+'">'
       + '<div class="tk-scrim"></div>'
-      + '<div class="tk-logos">'+awayImg+'<span class="tk-vs">vs</span>'+homeImg+'</div>'
-      + '<div class="tk-center">'
-        + '<div class="tk-teams">'+g.awayTeam+' @ '+g.homeTeam+'</div>'
-        + '<div class="tk-rule"></div>'
-        + '<div class="tk-venue">'+(g.venue||'')+'</div>'
-        + '<div class="tk-dt">'+weekday+' · '+mo+' '+day+', '+yr+'</div>'
+      + '<div class="tk-inner">'
+        + '<div class="tk-date">'+dateText+'</div>'
+        + '<div class="tk-match">'+awayImg+'<span class="tk-team">'+g.awayTeam+'</span><span class="tk-dot">·</span><span class="tk-team">'+g.homeTeam+'</span>'+homeImg+'</div>'
+        + venueHtml
         + companionsHtml
-        + '<div class="tk-badges">'+badges+'</div>'
       + '</div>'
     + '</div>'
     + '<div class="tk-perf"></div>'
     + '<div class="tk-counterfoil">'
-      + scoreBlock
-      + seatHtml
+      + '<div class="tk-cf-logo" role="img" aria-label="momnts"></div>'
+      + '<div class="tk-cf-no">'+serial+'</div>'
       + '<div class="tk-barcode">'+bars+'</div>'
+      + scoreBlock
     + '</div>'
   + '</div>';
 }
@@ -4506,6 +4516,13 @@ function loadState() {
   savedGames      = (games || []).filter(function(g){ return g && g.id && g.date; });
   // Always re-derive canonical fields from source on load (fixes stale/wrong cached values).
   savedGames.forEach(function(g){ canonicalGame(g); });
+  // Back-fill permanent serial numbers (momntNo) in chronological order so each
+  // stub shows a stable "your Nth momnt"; already-numbered games keep their number.
+  var maxNo = 0;
+  savedGames.forEach(function(g){ if (g.momntNo && g.momntNo > maxNo) maxNo = g.momntNo; });
+  savedGames.filter(function(g){ return !g.momntNo; })
+    .sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.id < b.id ? -1 : 1); })
+    .forEach(function(g){ g.momntNo = ++maxNo; });
   try { LS.save('games', savedGames); } catch(e){}
   savedMoments    = moments || [];
   visitedStadiums = new Set(visited);
@@ -4649,6 +4666,11 @@ function closeNav() {
   if (obLogoImg) obLogoImg.src = MOMNTS_LOGO;
   var mobileLogoImg = document.getElementById('mobile-logo-img');
   if (mobileLogoImg) mobileLogoImg.src = MOMNTS_LOGO;
+  // Embed the wordmark once as the ticket-stub counterfoil logo (avoids repeating
+  // the base64 data URI in every rendered ticket).
+  var tkLogoStyle = document.createElement('style');
+  tkLogoStyle.textContent = '.tk-cf-logo{background-image:url(' + MOMNTS_LOGO + ')}';
+  document.head.appendChild(tkLogoStyle);
   // Close the mobile drawer whenever a nav item (incl. dynamic favorites) is tapped
   var sb = document.querySelector('.sidebar');
   if (sb) sb.addEventListener('click', function(e) {
