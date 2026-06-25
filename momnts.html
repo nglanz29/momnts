@@ -121,7 +121,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .tk-counterfoil{width:150px;flex-shrink:0;background:#16191b;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0px,rgba(255,255,255,.045) 1px,transparent 1px,transparent 4px);color:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 10px;gap:5px;}
 .tk-cf-logo{height:13px;width:62px;background-position:center;background-repeat:no-repeat;background-size:contain;opacity:.92;}
 .tk-cf-no{font-family:var(--font-ui);font-size:8.5px;letter-spacing:1.5px;color:var(--text2);}
-.tk-cf-score{font-family:'Space Mono','JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:.95;letter-spacing:-.5px;color:var(--paper);}
+.tk-cf-score{font-family:'Space Mono','JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:.95;letter-spacing:-.5px;color:var(--paper);white-space:nowrap;}
+.tk-cf-score.lg3{font-size:19px;}
 .tk-cf-score .win{color:#1FB574;}
 .tk-cf-sep{color:var(--text2);}
 .tk-cf-noscore{font-family:'Space Mono','JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--text3);}
@@ -141,6 +142,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
   .tk-venue{font-size:9px;letter-spacing:.6px;}
   .tk-counterfoil{width:112px;padding:10px 7px;gap:4px;}
   .tk-cf-score{font-size:22px;}
+  .tk-cf-score.lg3{font-size:16px;}
 }
 
 .pr{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
@@ -2786,8 +2788,12 @@ function gameCardHtml(g) {
   var homeImg = homeLogo ? '<img src="'+homeLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
 
   // Venue line: "Venue · seat/section" if provided, else "Venue · City, ST".
+  // The stored venue often already includes the city ("Busch Stadium, St. Louis"),
+  // so when we have a detail to append, strip the trailing ", City" to avoid doubling.
   var venueDetail = g.seat ? g.seat : venueCityState(g);
-  var venueText = g.venue ? (g.venue + (venueDetail ? ' · ' + venueDetail : '')) : (venueDetail || '');
+  var venueName = g.venue || '';
+  if (venueName && venueDetail && venueName.indexOf(',') !== -1) venueName = venueName.split(',')[0].trim();
+  var venueText = venueName ? (venueName + (venueDetail ? ' · ' + venueDetail : '')) : (venueDetail || '');
   var venueHtml = venueText ? '<div class="tk-venue">'+venueText+'</div>' : '';
 
   // Companions line (optional, under the venue)
@@ -2798,22 +2804,20 @@ function gameCardHtml(g) {
   var aNum = parseInt(g.awayScore,10), hNum = parseInt(g.homeScore,10);
   var aCls = (!isNaN(aNum) && !isNaN(hNum) && aNum > hNum) ? ' class="win"' : '';
   var hCls = (!isNaN(aNum) && !isNaN(hNum) && hNum > aNum) ? ' class="win"' : '';
+  // Shrink a tier when either score is 3+ digits (e.g. NBA) so it stays on one line.
+  var longScore = (String(g.awayScore).length >= 3 || String(g.homeScore).length >= 3);
+  var scoreCls = 'tk-cf-score' + (longScore ? ' lg3' : '');
   var scoreBlock = score
-    ? '<div class="tk-cf-score"><span'+aCls+'>'+g.awayScore+'</span><span class="tk-cf-sep"> · </span><span'+hCls+'>'+g.homeScore+'</span></div>'+resultPill
+    ? '<div class="'+scoreCls+'"><span'+aCls+'>'+g.awayScore+'</span><span class="tk-cf-sep"> · </span><span'+hCls+'>'+g.homeScore+'</span></div>'+resultPill
     : '<div class="tk-cf-noscore">—</div>';
 
   // Permanent serial number, zero-padded to 4 digits.
   var serial = 'NO. ' + ('000' + (g.momntNo || 0)).slice(-4);
 
-  // Deterministic barcode from the game id — real barcode look: full-height bars
-  // of varied WIDTHS (1–3px) with varied gaps, not a bar chart of varied heights.
+  // One fixed barcode for every ticket (decorative; doesn't need to scan).
+  var BARCODE = [2,1,1,2,3,1,1,1,2,1,3,1,2,2,1,1,2,1,3,1,1,2,1,2,3,1,1,2];
   var bars = '';
-  var seed = 0; for (var i=0;i<g.id.length;i++) seed += g.id.charCodeAt(i);
-  for (var b=0;b<24;b++){
-    var w = 1 + ((seed*(b+2)) % 3);            // bar width 1–3px
-    var gap = 1 + ((seed*(b+5)) % 2);          // gap 1–2px
-    bars += '<span style="width:'+w+'px;margin-right:'+gap+'px"></span>';
-  }
+  for (var b=0;b<BARCODE.length;b++){ bars += '<span style="width:'+BARCODE[b]+'px;margin-right:1px"></span>'; }
 
   // Scanlines over the gradient (and optional photo) so the body matches the counterfoil.
   var bodyBg = g.photo
