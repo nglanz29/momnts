@@ -1876,6 +1876,15 @@ function spSelectSeason(year, btn) {
   next.disabled = false; next.style.opacity = '1';
 }
 
+// Fetch a team's schedule for a given season + seasontype (2=reg, 3=post). Returns the events array.
+async function spFetchSchedule(sport, espnId, season, seasonTypeNum) {
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/teams/${espnId}/schedule?season=${season}&seasontype=${seasonTypeNum}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('fetch failed');
+  const data = await res.json();
+  return data.events || [];
+}
+
 async function spGoStep3() {
   if (!sp.season) return;
   spShow('sp-loading');
@@ -1890,20 +1899,27 @@ async function spGoStep3() {
   }
 
   var seasonTypeNum = sp.seasonType === 'post' ? 3 : 2;
-  const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/teams/${espnId}/schedule?season=${sp.season}&seasontype=${seasonTypeNum}`;
 
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('fetch failed');
-    const data = await res.json();
-
-    const events = data.events || [];
+    var events = await spFetchSchedule(sport, espnId, sp.season, seasonTypeNum);
+    var usedSeason = sp.season;
+    // Playoff year mapping differs by league: NFL playoffs fall in January of the
+    // NEXT calendar year, while NBA/NHL seasons are labeled by their ENDING year.
+    // Whichever way the user thinks about it, retry the adjacent years so an
+    // "off-by-one" season pick still finds the games instead of looking broken.
+    if (!events.length && sp.seasonType === 'post') {
+      var alts = [sp.season + 1, sp.season - 1];
+      for (var ai = 0; ai < alts.length; ai++) {
+        var altEvents = await spFetchSchedule(sport, espnId, alts[ai], seasonTypeNum);
+        if (altEvents.length) { events = altEvents; usedSeason = alts[ai]; break; }
+      }
+    }
     if (!events.length) { spShow('sp-error'); return; }
 
     spShow('sp-step3');
     document.getElementById('sp-sel-logo2').src = sp.teamLogo;
     document.getElementById('sp-sel-name2').textContent = sp.teamName;
-    document.getElementById('sp-sel-season').textContent = '· ' + sp.season;
+    document.getElementById('sp-sel-season').textContent = '· ' + usedSeason;
 
     const list = document.getElementById('sp-games-list');
     list.innerHTML = '';
