@@ -3233,48 +3233,6 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Pick the top performers from the user's team for a game, by role.
-// Returns [{name, shot, line}] — up to 3, role-appropriate per sport.
-function topPerformersForMyTeam(g) {
-  if (!g.players || !g.players.length) return [];
-  var myLast = (g.myTeam || '').split(' ').pop();
-  // Players on the user's team (match by team name last word, fallback to all if none match)
-  var mine = g.players.filter(function(p){
-    return p.team && myLast && (p.team === g.myTeam || p.team.indexOf(myLast) > -1 || g.myTeam.indexOf((p.team||'').split(' ').pop()) > -1);
-  });
-  if (!mine.length) mine = g.players.slice(); // fallback: any tracked players
-  var sport = mine[0] ? mine[0].sport : '';
-
-  function entry(p){ return { name:p.name, shot:espnShot(p.sport, p.espnId), line:formatStatLine(p.sport, p.pos, p.stats, p.group) }; }
-  function bestByGroup(grp){
-    var pool = mine.filter(function(p){ return p.group === grp; });
-    pool.sort(function(a,b){ return prominenceScore(b.group,b.stats) - prominenceScore(a.group,a.stats); });
-    return pool[0];
-  }
-  var picks = [];
-  if (sport === 'nfl') {
-    [bestByGroup('passing'), bestByGroup('rushing'), bestByGroup('receiving')].forEach(function(p){ if (p) picks.push(p); });
-  } else if (sport === 'nba') {
-    // top scorer, top rebounder, top assister (dedupe so one stud doesn't take all 3)
-    var used = {};
-    [['pts'],['reb'],['ast']].forEach(function(keys){
-      var pool = mine.slice().sort(function(a,b){ return (b.stats[keys[0]]||0) - (a.stats[keys[0]]||0); });
-      var pick = pool.find(function(p){ return !used[p.espnId] && (p.stats[keys[0]]||0) > 0; }) || pool[0];
-      if (pick && !used[pick.espnId]) { used[pick.espnId]=true; picks.push(pick); }
-    });
-  } else if (sport === 'mlb') {
-    // top 3 batters by prominence (hits/HR/RBI)
-    var batters = mine.filter(function(p){ return p.group === 'batting'; });
-    batters.sort(function(a,b){ return prominenceScore('batting',b.stats) - prominenceScore('batting',a.stats); });
-    picks = batters.slice(0,3);
-    if (picks.length < 3) { var pitch = bestByGroup('pitching'); if (pitch) picks.push(pitch); }
-  } else {
-    mine.sort(function(a,b){ return prominenceScore(b.group,b.stats) - prominenceScore(a.group,a.stats); });
-    picks = mine.slice(0,3);
-  }
-  return picks.filter(Boolean).slice(0,3).map(entry);
-}
-
 function shareStub() {
   if (!gdCurrentId) return;
   var g = canonicalGame(savedGames.find(function(x){ return x.id === gdCurrentId; }));
