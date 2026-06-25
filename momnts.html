@@ -1089,7 +1089,9 @@ textarea.mi{resize:none;height:68px;}
       <div style="display:flex;gap:8px;">
         <button type="button" id="fha-home" class="ha-btn on" onclick="setHomeAway('home')">Home</button>
         <button type="button" id="fha-away" class="ha-btn" onclick="setHomeAway('away')">Away</button>
+        <button type="button" id="fha-neutral" class="ha-btn" onclick="toggleNeutral()" style="flex:1.4;" title="You weren't rooting for either team">Neutral</button>
       </div>
+      <div id="fneutral-note" style="display:none;font-size:11px;color:var(--text3);margin-top:6px;">Neutral — counts for your stadiums &amp; players seen, but won't affect your win-loss record.</div>
     </div>
     <div class="mg3">
       <div class="mf"><label class="mlb2" id="fscore-home-lbl">Home score</label><input type="text" id="fscore-home" placeholder="0" class="mi" oninput="recalcResult()"></div>
@@ -1628,6 +1630,7 @@ function renderPins() {
 
 let curPrefill = null;
 let curHomeAway = 'home';
+let curNeutral = false;
 let curPhoto = ''; // base64 data URI of the attached photo (downscaled)
 
 // Read a selected image, downscale it, and store as a compressed JPEG data URI
@@ -1675,9 +1678,32 @@ function removePhoto(e) {
 
 function setHomeAway(ha) {
   curHomeAway = ha;
+  curNeutral = false;
   document.getElementById('fha-home').classList.toggle('on', ha === 'home');
   document.getElementById('fha-away').classList.toggle('on', ha === 'away');
+  var nb = document.getElementById('fha-neutral'); if (nb) nb.classList.remove('on');
+  var nn = document.getElementById('fneutral-note'); if (nn) nn.style.display = 'none';
+  var res = document.getElementById('fres'); if (res) { res.disabled = false; res.style.opacity = '1'; }
   recalcResult();
+}
+
+// Neutral: attended but not rooting for either team — excluded from your W/L record.
+function toggleNeutral() {
+  curNeutral = !curNeutral;
+  document.getElementById('fha-neutral').classList.toggle('on', curNeutral);
+  document.getElementById('fneutral-note').style.display = curNeutral ? 'block' : 'none';
+  if (curNeutral) {
+    document.getElementById('fha-home').classList.remove('on');
+    document.getElementById('fha-away').classList.remove('on');
+  } else {
+    document.getElementById('fha-home').classList.toggle('on', curHomeAway === 'home');
+    document.getElementById('fha-away').classList.toggle('on', curHomeAway === 'away');
+  }
+  var res = document.getElementById('fres');
+  if (res) {
+    if (curNeutral) { res.value = ''; res.disabled = true; res.style.opacity = '.5'; }
+    else { res.disabled = false; res.style.opacity = '1'; }
+  }
 }
 
 // Derive the W/L/T result from the home/away scores and which side the user's team was on
@@ -2728,7 +2754,8 @@ function submitG() {
     league: (league || '').toUpperCase(),
     pinId: pinId,
     homeAway: homeAway,
-    result: res,
+    neutral: curNeutral,
+    result: curNeutral ? '' : res,
     scoreUs: us,
     scoreThem: them,
     seat: seat,
@@ -2926,6 +2953,7 @@ function canonicalGame(g) {
 
 // Compute W/L/T from the user's team (myTeam) perspective using canonical scores
 function computeMyResult(g) {
+  if (g.neutral) return '';   // neutral games never count toward W/L
   if (g.homeScore === '' || g.awayScore === '' || g.homeScore == null || g.awayScore == null) return g.result || '';
   var hs = parseFloat(g.homeScore), as = parseFloat(g.awayScore);
   if (isNaN(hs) || isNaN(as)) return g.result || '';
@@ -4193,7 +4221,7 @@ function renderRecords() {
   var teamRows = '';
   favTeams.forEach(function(t){
     var fullName = t.city + ' ' + t.name;
-    var myGames = canon.filter(function(g){ return g.myTeam && (g.myTeam === fullName || g.myTeam.indexOf(t.name) > -1); });
+    var myGames = canon.filter(function(g){ return !g.neutral && g.myTeam && (g.myTeam === fullName || g.myTeam.indexOf(t.name) > -1); });
     if (!myGames.length) return;
     var r = recOf(myGames);
     teamRows += recRow(t.logo, fullName, r.w, r.l);
@@ -4212,8 +4240,8 @@ function renderRecords() {
   if (leagueRows) html += '<div class="lbl" style="margin-top:22px;">Record by league</div>'+leagueRows;
 
   // ── Home vs away (from the user's perspective) ──
-  var homeG = canon.filter(function(g){ return g.myTeam && g.myTeam === g.homeTeam; });
-  var awayG = canon.filter(function(g){ return g.myTeam && g.myTeam === g.awayTeam; });
+  var homeG = canon.filter(function(g){ return !g.neutral && g.myTeam && g.myTeam === g.homeTeam; });
+  var awayG = canon.filter(function(g){ return !g.neutral && g.myTeam && g.myTeam === g.awayTeam; });
   function recStr(arr){ var r = recOf(arr); return r.w+'–'+r.l; }
   if (homeG.length || awayG.length) {
     html += '<div class="lbl" style="margin-top:22px;">Home vs away</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:11px;">';
