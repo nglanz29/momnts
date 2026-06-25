@@ -1334,6 +1334,49 @@ const PINS=[
   ['lak',-118.27,34.04,'NHL',false,'Crypto.com Arena','LA Kings','https://a.espncdn.com/i/teamlogos/nhl/500/la.png'],
 ];
 
+// City/state for each stadium (keyed by PIN id). Used as the ticket-stub venue
+// fallback when a game has no seat/section info. See venueCityState().
+const VENUE_LOCATION = {
+  'stl-mlb':'St. Louis, MO','chc':'Chicago, IL','cws':'Chicago, IL','nyy':'Bronx, NY','nym':'Queens, NY',
+  'bos':'Boston, MA','lad':'Los Angeles, CA','sf':'San Francisco, CA','oak':'Oakland, CA','sea-mlb':'Seattle, WA',
+  'min-mlb':'Minneapolis, MN','det-mlb':'Detroit, MI','cle':'Cleveland, OH','pit':'Pittsburgh, PA','mil':'Milwaukee, WI',
+  'cin-mlb':'Cincinnati, OH','atl':'Atlanta, GA','mia-mlb':'Miami, FL','tb-mlb':'St. Petersburg, FL','was':'Washington, DC',
+  'bal':'Baltimore, MD','phi-mlb':'Philadelphia, PA','hou':'Houston, TX','tex':'Arlington, TX','kc-mlb':'Kansas City, MO',
+  'col-mlb':'Denver, CO','ari':'Phoenix, AZ','sd':'San Diego, CA','laa':'Anaheim, CA','tor':'Toronto, ON',
+  'cin':'Cincinnati, OH','kc':'Kansas City, MO','dal':'Arlington, TX','gb':'Green Bay, WI','lar':'Inglewood, CA',
+  'ne':'Foxborough, MA','sea':'Seattle, WA','buf':'Orchard Park, NY','chi-nfl':'Chicago, IL','den':'Denver, CO',
+  'sf-nfl':'Santa Clara, CA','mia-nfl':'Miami Gardens, FL','phi':'Philadelphia, PA','pit-nfl':'Pittsburgh, PA','min-nfl':'Minneapolis, MN',
+  'ind':'Indianapolis, IN','ten':'Nashville, TN','atl-nfl':'Atlanta, GA','no':'New Orleans, LA','hou-nfl':'Houston, TX',
+  'nyg':'East Rutherford, NJ','nyj':'East Rutherford, NJ','lac':'Inglewood, CA','lv':'Las Vegas, NV','az-nfl':'Glendale, AZ',
+  'tb-nfl':'Tampa, FL','car-nfl':'Charlotte, NC','bal-nfl':'Baltimore, MD','jax':'Jacksonville, FL','was-nfl':'Landover, MD',
+  'det-nfl':'Detroit, MI','cle-nfl':'Cleveland, OH',
+  'lal':'Los Angeles, CA','lac-nba':'Los Angeles, CA','gsw':'San Francisco, CA','chi-nba':'Chicago, IL','bos-nba':'Boston, MA',
+  'mia-nba':'Miami, FL','ny-nba':'New York, NY','phx':'Phoenix, AZ','mil-nba':'Milwaukee, WI','den-nba':'Denver, CO',
+  'sa':'San Antonio, TX','orl':'Orlando, FL','cle-nba':'Cleveland, OH','ind-nba':'Indianapolis, IN','dal-nba':'Dallas, TX',
+  'okc':'Oklahoma City, OK','min-nba':'Minneapolis, MN','atl-nba':'Atlanta, GA','mem':'Memphis, TN','nop':'New Orleans, LA',
+  'por':'Portland, OR','uta':'Salt Lake City, UT',
+  'stl-nhl':'St. Louis, MO','chi-nhl':'Chicago, IL','det':'Detroit, MI','pit-nhl':'Pittsburgh, PA','bos-nhl':'Boston, MA',
+  'tb':'Tampa, FL','col':'Denver, CO','vgk':'Las Vegas, NV','min-nhl':'St. Paul, MN','nsh':'Nashville, TN',
+  'car':'Raleigh, NC','nyr':'New York, NY','phi-nhl':'Philadelphia, PA','was-nhl':'Washington, DC','dal-nhl':'Dallas, TX',
+  'fla':'Sunrise, FL','buf-nhl':'Buffalo, NY','njd':'Newark, NJ','nyi':'Elmont, NY','sea-nhl':'Seattle, WA',
+  'sjs':'San Jose, CA','ana':'Anaheim, CA','lak':'Los Angeles, CA'
+};
+
+// Resolve a game's "City, ST" from its pin id, falling back to a venue-name match.
+function venueCityState(g) {
+  if (g && g.pinId && VENUE_LOCATION[g.pinId]) return VENUE_LOCATION[g.pinId];
+  if (g && g.venue) {
+    var v = ('' + g.venue).trim().toLowerCase();
+    for (var i = 0; i < PINS.length; i++) {
+      if (PINS[i][5] && PINS[i][5].toLowerCase() === v) {
+        var loc = VENUE_LOCATION[PINS[i][0]];
+        if (loc) return loc;
+      }
+    }
+  }
+  return '';
+}
+
 let favs = new Set();
 let actL = new Set(['MLB','NFL','NBA','NHL']);
 let enabledLeagues = new Set(['MLB','NFL','NBA','NHL']);
