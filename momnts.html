@@ -3346,7 +3346,10 @@ function shareStub() {
           ctx.fillText(venueStr, cx, cardY+692);
         }
 
-        // ---- COUNTERFOIL: score, result, wordmark ----
+        // ---- COUNTERFOIL: serial, score, result, wordmark ----
+        ctx.fillStyle = '#8a9590';
+        ctx.font = '500 24px "JetBrains Mono", monospace';
+        ctx.fillText('NO. ' + ('000' + (g.momntNo || 0)).slice(-4), cx, perfY+48);
         if (hasScore) {
           var aWin = (!isNaN(aNum)&&!isNaN(hNum)&&aNum>hNum), hWin = (!isNaN(aNum)&&!isNaN(hNum)&&hNum>aNum);
           var aS = ''+g.awayScore, sep = ' · ', hS = ''+g.homeScore;
