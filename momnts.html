@@ -3253,7 +3253,7 @@ function shareStub() {
       var W = 1080, H = 1350;
       var cx = W/2;
       var cardX = 60, cardY = 90, cardW = W-120, cardH = H-180;
-      var perfY = cardY + 870;                 // horizontal perforation; counterfoil below
+      var perfY = cardY + 760;                 // horizontal perforation; counterfoil below
       var awayC = teamColorsFor(awayLogo, g.league);
       var homeC = teamColorsFor(homeLogo, g.league);
       var d = new Date(g.date+'T12:00:00');
@@ -3316,34 +3316,34 @@ function shareStub() {
         ctx.beginPath(); ctx.arc(cardX+cardW, perfY, 26, 0, Math.PI*2); ctx.fill();
 
         // ---- BODY: stacked matchup ----
-        var logoSz = 170;
-        if (useImages && awayImg && awayImg.width) ctx.drawImage(awayImg, cx-logoSz/2, cardY+120-logoSz/2, logoSz, logoSz);
-        if (useImages && homeImg && homeImg.width) ctx.drawImage(homeImg, cx-logoSz/2, cardY+490-logoSz/2, logoSz, logoSz);
+        var logoSz = 165;
+        if (useImages && awayImg && awayImg.width) ctx.drawImage(awayImg, cx-logoSz/2, cardY+150-logoSz/2, logoSz, logoSz);
+        if (useImages && homeImg && homeImg.width) ctx.drawImage(homeImg, cx-logoSz/2, cardY+410-logoSz/2, logoSz, logoSz);
 
         function teamName(name, y){
-          var t = (name||'').toUpperCase(), fs = 62;
+          var t = (name||'').toUpperCase(), fs = 60;
           ctx.font = '700 '+fs+'px "Barlow Condensed", sans-serif';
           while (ctx.measureText(t).width > cardW-120 && fs > 26){ fs-=2; ctx.font='700 '+fs+'px "Barlow Condensed", sans-serif'; }
           ctx.fillText(t, cx, y);
         }
         ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 12;
-        teamName(g.awayTeam, cardY+250);
+        teamName(g.awayTeam, cardY+275);
         ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '500 30px "Barlow Condensed", sans-serif';
-        ctx.fillText('vs', cx, cardY+320);
+        ctx.fillText('vs', cx, cardY+330);
         ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 12;
-        teamName(g.homeTeam, cardY+620);
+        teamName(g.homeTeam, cardY+535);
         ctx.shadowBlur = 0;
 
         // Date + venue
         ctx.fillStyle = 'rgba(255,255,255,.82)';
         ctx.font = '500 28px "JetBrains Mono", monospace';
-        ctx.fillText(dateStr, cx, cardY+720);
+        ctx.fillText(dateStr, cx, cardY+650);
         if (venueStr) {
           ctx.fillStyle = 'rgba(255,255,255,.8)';
           var vfs = 24; ctx.font = '500 '+vfs+'px "JetBrains Mono", monospace';
           while (ctx.measureText(venueStr).width > cardW-100 && vfs > 12){ vfs--; ctx.font='500 '+vfs+'px "JetBrains Mono", monospace'; }
-          ctx.fillText(venueStr, cx, cardY+765);
+          ctx.fillText(venueStr, cx, cardY+692);
         }
 
         // ---- COUNTERFOIL: score, result, wordmark ----
@@ -3353,7 +3353,7 @@ function shareStub() {
           var scfs = 130; ctx.font = '700 '+scfs+'px "Space Mono", monospace';
           while (ctx.measureText(aS+sep+hS).width > cardW-160 && scfs > 60){ scfs-=4; ctx.font='700 '+scfs+'px "Space Mono", monospace'; }
           var aw = ctx.measureText(aS).width, spw = ctx.measureText(sep).width, hw = ctx.measureText(hS).width;
-          var startX = cx-(aw+spw+hw)/2, scoreY = perfY+95;
+          var startX = cx-(aw+spw+hw)/2, scoreY = perfY+130;
           ctx.textAlign = 'left';
           ctx.fillStyle = aWin?'#1FB574':'#EEF0EE'; ctx.fillText(aS, startX, scoreY);
           ctx.fillStyle = '#8a9590'; ctx.fillText(sep, startX+aw, scoreY);
@@ -3365,22 +3365,22 @@ function shareStub() {
             var rfg = myResult==='W'?'#0D0E10':'#fff';
             ctx.font = '700 30px "JetBrains Mono", monospace';
             var pillW = Math.max(150, ctx.measureText(rw).width+60);
-            ctx.fillStyle = rbg; roundRectPath(ctx, cx-pillW/2, scoreY+62, pillW, 56, 28); ctx.fill();
-            ctx.fillStyle = rfg; ctx.fillText(rw, cx, scoreY+90);
+            ctx.fillStyle = rbg; roundRectPath(ctx, cx-pillW/2, scoreY+72, pillW, 56, 28); ctx.fill();
+            ctx.fillStyle = rfg; ctx.fillText(rw, cx, scoreY+100);
           }
         } else {
           ctx.fillStyle = '#5a6560'; ctx.font = '700 90px "Space Mono", monospace';
-          ctx.fillText('—', cx, perfY+95);
+          ctx.fillText('—', cx, perfY+130);
         }
 
         // Wordmark (the main ticket-stub logo) near the bottom of the counterfoil.
         // Data-URI image never taints the canvas, so draw it regardless of useImages.
         if (logoImg && logoImg.width) {
-          var lh = 58, lw = lh*(logoImg.width/logoImg.height);
-          ctx.drawImage(logoImg, cx-lw/2, cardY+cardH-105, lw, lh);
+          var lh = 60, lw = lh*(logoImg.width/logoImg.height);
+          ctx.drawImage(logoImg, cx-lw/2, cardY+cardH-100, lw, lh);
         } else {
           ctx.fillStyle = '#1FB574'; ctx.font = '700 40px "Space Mono", monospace';
-          ctx.fillText('momnts', cx, cardY+cardH-78);
+          ctx.fillText('momnts', cx, cardY+cardH-72);
         }
 
         return canvas;
