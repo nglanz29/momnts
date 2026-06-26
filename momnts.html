@@ -3076,6 +3076,7 @@ function addMoment(m) {
   if (!savedMoments) savedMoments = [];
   // Avoid duplicates by gameId
   if (m.gameId && savedMoments.find(function(x){ return x.gameId === m.gameId; })) return;
+  if (!m.category) m.category = tagToCategory(m.type);
   m.id = 'm' + Date.now();
   savedMoments.unshift(m);
   LS.save('moments', savedMoments);
