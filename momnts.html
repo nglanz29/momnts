@@ -173,7 +173,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .vc-inner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.2,.8,.3,1);transform-style:preserve-3d;}
 .vault-card.flipped .vc-inner{transform:rotateY(180deg);}
 .vc-front,.vc-back{position:absolute;top:0;left:0;width:100%;height:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--border);border-radius:var(--rl);background-color:var(--bg3);background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0px,rgba(255,255,255,.022) 1px,transparent 1px,transparent 4px);overflow:hidden;}
-.vc-front{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:12px;text-align:center;border-left-width:3px;border-left-style:solid;}
+.vc-front{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:12px;text-align:center;border-top-width:3px;border-top-style:solid;}
+.vc-logos{display:flex;gap:8px;align-items:center;justify-content:center;}
+.vc-logos img{width:24px;height:24px;object-fit:contain;}
+.vc-foot{display:flex;flex-direction:column;align-items:center;gap:4px;}
 .vc-back{transform:rotateY(180deg);display:flex;flex-direction:column;padding:12px 13px;background-color:var(--bg2);}
 .vc-medallion{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pinned-row .vc-medallion{width:48px;height:48px;}
@@ -3195,16 +3198,24 @@ function openMomntGame(gameId, ev) {
 function momntCardHTML(m) {
   var meta = momntMeta(m.category);
   var d = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-  var med = '<div class="vc-medallion" style="background:'+meta.bg+'">'+medallionSVG(m.category,30)+'</div>';
-  var tierChip = '<span class="vc-tier" style="background:'+meta.bg+';color:'+meta.color+'">'+meta.tierLabel+'</span>';
-  var front = '<div class="vc-front" style="border-left-color:'+meta.color+'">'+med
-    + '<div class="vc-title">'+escMomnt(m.title)+'</div>'+tierChip
-    + '<div class="vc-date">'+(d ? d.toUpperCase() : '')+(m.league?' · '+m.league:'')+'</div></div>';
+  var rawGame = m.gameId ? savedGames.find(function(x){ return x.id === m.gameId; }) : null;
+  var game = rawGame ? canonicalGame(rawGame) : null;
 
-  var game = m.gameId ? savedGames.find(function(x){ return x.id === m.gameId; }) : null;
+  var med = '<div class="vc-medallion" style="background:'+meta.bg+'">'+medallionSVG(m.category,32)+'</div>';
+  var tierChip = '<span class="vc-tier" style="background:'+meta.bg+';color:'+meta.color+'">'+meta.tierLabel+'</span>';
+  var frontLogos = '';
+  if (game) {
+    var fa = game.awayLogo ? '<img src="'+game.awayLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
+    var fh = game.homeLogo ? '<img src="'+game.homeLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
+    if (fa || fh) frontLogos = '<div class="vc-logos">'+fa+fh+'</div>';
+  }
+  var front = '<div class="vc-front" style="border-top-color:'+meta.color+'">'+med
+    + '<div class="vc-title">'+escMomnt(m.title)+'</div>'+frontLogos
+    + '<div class="vc-foot">'+tierChip
+    + '<span class="vc-date">'+(d ? d.toUpperCase() : '')+(m.league?' · '+m.league:'')+'</span></div></div>';
+
   var bodyHTML;
   if (game) {
-    game = canonicalGame(game);
     var aImg = game.awayLogo ? '<img src="'+game.awayLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
     var hImg = game.homeLogo ? '<img src="'+game.homeLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
     var sc = (game.homeScore!==''&&game.awayScore!==''&&game.homeScore!=null&&game.awayScore!=null) ? game.awayScore+'–'+game.homeScore : '';
