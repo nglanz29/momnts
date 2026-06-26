@@ -75,6 +75,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .ph{margin-bottom:22px;}
 .pt{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:-.3px;}
 .ps{color:var(--text2);font-size:13px;margin-top:3px;}
+.info-i{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--text3);color:var(--text3);font-size:10px;font-weight:700;cursor:help;margin-left:9px;position:relative;vertical-align:middle;font-family:var(--font-ui);}
+.info-i:hover{color:var(--text);border-color:var(--text2);}
+.info-pop{display:none;position:absolute;top:140%;left:0;width:250px;background:var(--bg4);border:1px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:11.5px;font-weight:400;line-height:1.5;color:var(--text2);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.6);text-transform:none;letter-spacing:normal;}
+.info-i:hover .info-pop,.info-i:focus .info-pop{display:block;}
 
 .sc{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:14px;}
 .sl{font-family:var(--font-ui);font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px;}
@@ -764,7 +768,7 @@ textarea.mi{resize:none;height:68px;}
 
 <!-- MOMENTS -->
 <div id="moments" class="pg">
-  <div class="ph"><div class="pt">momnts</div><div class="ps">the historic, the rare, the unforgettable — you were there.</div></div>
+  <div class="ph"><div class="pt">momnts<span class="info-i" tabindex="0">i<span class="info-pop">A momnt is something historic, rare, or unforgettable you saw in person — a no-hitter, a walk-off, a playoff clincher, a record night. Some are detected automatically when you log a game; tag the rest yourself. Each one earns a rarity tier.</span></span></div><div class="ps">the historic, the rare, the unforgettable — you were there.</div></div>
   <button class="abtn" onclick="openMomentModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>log a moment</button>
   <div id="moments-list">
     <div style="color:var(--text3);font-size:13px;padding:16px 0;">No momnts logged yet. Hit "Log a momnt" above to add one.</div>
@@ -3048,6 +3052,93 @@ function addMoment(m) {
   LS.save('moments', savedMoments);
 }
 
+// ── MOMNT CATEGORY + RARITY SYSTEM ──────────────────────────────────────
+// Rarity tiers (auto-derived from category). color = accent, bg = medallion fill.
+var MOMNT_TIERS = {
+  legendary: { label:'Legendary', color:'#f4a62a', bg:'#3a2e12' },
+  epic:      { label:'Epic',      color:'#9d98ff', bg:'#241f3f' },
+  rare:      { label:'Rare',      color:'#3ddba8', bg:'#0e3328' },
+  notable:   { label:'Notable',   color:'#aab1ad', bg:'#22262a' }
+};
+// Each category → its tier, medallion icon, and whether it can be auto-detected.
+var MOMNT_CATS = {
+  championship:   { label:'Championship',  tier:'legendary', icon:'trophy',   auto:false },
+  record:         { label:'Record',        tier:'legendary', icon:'crown',    auto:false },
+  'perfect-game': { label:'Perfect game',  tier:'legendary', icon:'gem',      auto:true  },
+  'no-hitter':    { label:'No-hitter',     tier:'epic',      icon:'egg',      auto:true  },
+  milestone:      { label:'Milestone',     tier:'epic',      icon:'flag',     auto:false },
+  playoff:        { label:'Playoff',       tier:'epic',      icon:'medal',    auto:true  },
+  feat:           { label:'Big game',      tier:'epic',      icon:'star',     auto:true  },
+  'walk-off':     { label:'Walk-off',      tier:'rare',      icon:'bolt',     auto:false },
+  'buzzer-beater':{ label:'Buzzer-beater', tier:'rare',      icon:'clock',    auto:false },
+  overtime:       { label:'Overtime',      tier:'rare',      icon:'ot',       auto:true  },
+  comeback:       { label:'Comeback',      tier:'rare',      icon:'comeback', auto:false },
+  shutout:        { label:'Shutout',       tier:'rare',      icon:'shield',   auto:true  },
+  debut:          { label:'Debut',         tier:'notable',   icon:'sunrise',  auto:true  },
+  other:          { label:'Momnt',         tier:'notable',   icon:'spark',    auto:false }
+};
+// Custom monoline medallion set (24x24, stroke = currentColor). Our own iconography.
+var MOMNT_ICONS = {
+  trophy:'<path d="M6 4h12M7 4v6a5 5 0 0 0 10 0V4M7 6H4a2 2 0 0 0 4 2.6M17 6h3a2 2 0 0 1-4 2.6M12 15v4M8 21h8M9.5 18.5h5V21"/>',
+  crown:'<path d="M4 18h16M4 18l1.6-9 4.2 4.3L12 6l2.2 7.3L18.4 9 20 18"/>',
+  gem:'<path d="M3 9l9 12 9-12-4-5H7L3 9zM3 9h18M7 4l2 5M17 4l-2 5M9 9l3 12 3-12"/>',
+  egg:'<ellipse cx="12" cy="13" rx="6.5" ry="8.5"/><line x1="7.5" y1="18" x2="16.5" y2="8"/>',
+  flag:'<path d="M6 21V3M6 4h12l-3 3.5L18 11H6"/>',
+  medal:'<circle cx="12" cy="15" r="6"/><path d="M9.2 10 7 3M14.8 10 17 3M12 9V3"/>',
+  star:'<path d="M12 3l2.6 6.3 6.8.5-5.2 4.4 1.7 6.6L12 17.7 6.3 21.3l1.7-6.6L2.8 10.2l6.8-.5z"/>',
+  bolt:'<path d="M13 2 5 14h6l-2 8 8-12h-6z"/>',
+  clock:'<circle cx="12" cy="14" r="7.5"/><path d="M12 10v4l2.6 1.6M9 2.5h6M12 2.5v4"/>',
+  ot:'<path d="M7 6l5 6-5 6M13 6l5 6-5 6"/>',
+  comeback:'<path d="M3 17l6-6 4 4 8-8M21 11V7h-4"/>',
+  shield:'<path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+  sunrise:'<path d="M3 18h18M7 18a5 5 0 0 1 10 0M12 7V4M4.6 10 3 8.5M19.4 10 21 8.5"/>',
+  spark:'<path d="M12 4v16M4 12h16M6.5 6.5l11 11M17.5 6.5l-11 11"/>'
+};
+// Resolve a category key to its display meta (tier color/label + icon).
+function momntMeta(cat) {
+  var c = MOMNT_CATS[cat] || MOMNT_CATS.other;
+  var t = MOMNT_TIERS[c.tier] || MOMNT_TIERS.notable;
+  return { label:c.label, icon:c.icon, tier:c.tier, tierLabel:t.label, color:t.color, bg:t.bg };
+}
+// Build a medallion <svg> for a category at a given pixel size, tinted by tier.
+function medallionSVG(cat, px) {
+  var m = momntMeta(cat);
+  var inner = MOMNT_ICONS[m.icon] || MOMNT_ICONS.spark;
+  return '<svg viewBox="0 0 24 24" width="'+px+'" height="'+px+'" fill="none" stroke="'+m.color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+inner+'</svg>';
+}
+// Map a free-text legacy tag to a category key (used by migration + manual entry).
+function tagToCategory(tag) {
+  var t = (tag || '').toLowerCase().trim();
+  if (!t) return 'other';
+  if (MOMNT_CATS[t]) return t;
+  if (/perfect/.test(t)) return 'perfect-game';
+  if (/no.?hit/.test(t)) return 'no-hitter';
+  if (/champ|clinch|title|cup|finals/.test(t)) return 'championship';
+  if (/record/.test(t)) return 'record';
+  if (/milestone|career|[0-9]{3}th/.test(t)) return 'milestone';
+  if (/playoff|postseason/.test(t)) return 'playoff';
+  if (/walk.?off/.test(t)) return 'walk-off';
+  if (/buzzer|game.?winner/.test(t)) return 'buzzer-beater';
+  if (/\bot\b|overtime|extra inning/.test(t)) return 'overtime';
+  if (/comeback|rally/.test(t)) return 'comeback';
+  if (/shutout|blank/.test(t)) return 'shutout';
+  if (/debut|first/.test(t)) return 'debut';
+  if (/triple.?double|hat.?trick|big game|career.?high/.test(t)) return 'feat';
+  return 'other';
+}
+// Backfill a category onto any momnt that lacks one (runs on load).
+function migrateMomntCategories() {
+  if (!savedMoments) return;
+  var changed = false;
+  savedMoments.forEach(function(m){
+    if (m.category && MOMNT_CATS[m.category]) return;
+    if (m.gameId && (m.type === 'Playoff' || !m.type)) m.category = 'playoff';
+    else m.category = tagToCategory(m.type);
+    changed = true;
+  });
+  if (changed) { try { LS.save('moments', savedMoments); } catch(e){} }
+}
+
 function renderMoments() {
   var el = document.getElementById('moments-list');
   if (!el) return;
@@ -4501,6 +4592,7 @@ function loadState() {
     .forEach(function(g){ g.momntNo = ++maxNo; });
   try { LS.save('games', savedGames); } catch(e){}
   savedMoments    = moments || [];
+  migrateMomntCategories();
   visitedStadiums = new Set(visited);
   checklistDone   = cl;
   loadPlayerList();
