@@ -160,6 +160,35 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .mt{font-size:14px;font-weight:600;}
 .mm{font-size:12px;color:var(--text2);margin-top:2px;}
 .mb{display:inline-block;font-size:10px;background:rgba(108,99,255,.15);color:#9d98ff;padding:2px 8px;border-radius:20px;margin-top:5px;font-weight:600;}
+/* ── momnts Vault (rarity cards, flip, pinned) ── */
+.momnt-stats{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px;}
+.momnt-stat{font-family:var(--font-ui);font-size:11px;font-weight:700;padding:5px 11px;border-radius:20px;letter-spacing:.4px;}
+.pinned-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
+.vault-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.momnt-filters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;}
+.mfilt{font-family:var(--font-ui);font-size:10.5px;font-weight:700;letter-spacing:.6px;padding:5px 12px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);cursor:pointer;}
+.mfilt.on{background:var(--accent);border-color:var(--accent);color:#0D0E10;}
+.vault-card{perspective:1000px;height:160px;cursor:pointer;}
+.pinned-row .vault-card{height:158px;}
+.vc-inner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.2,.8,.3,1);transform-style:preserve-3d;}
+.vault-card.flipped .vc-inner{transform:rotateY(180deg);}
+.vc-front,.vc-back{position:absolute;top:0;left:0;width:100%;height:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--border);border-radius:var(--rl);background-color:var(--bg3);background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0px,rgba(255,255,255,.022) 1px,transparent 1px,transparent 4px);overflow:hidden;}
+.vc-front{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:12px;text-align:center;border-left-width:3px;border-left-style:solid;}
+.vc-back{transform:rotateY(180deg);display:flex;flex-direction:column;padding:12px 13px;background-color:var(--bg2);}
+.vc-medallion{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pinned-row .vc-medallion{width:48px;height:48px;}
+.vc-title{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.2;max-height:33px;overflow:hidden;}
+.vc-tier{font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 9px;border-radius:20px;}
+.vc-date{font-family:var(--font-ui);font-size:9.5px;color:var(--text3);letter-spacing:.4px;}
+.vc-back-cat{font-family:var(--font-ui);font-size:9px;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:5px;}
+.vc-back-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.25;margin-bottom:7px;}
+.vc-back-body{font-family:var(--font-ui);font-size:10.5px;color:var(--text2);line-height:1.55;flex:1;overflow:hidden;}
+.vc-back-game{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+.vc-back-game img{width:22px;height:22px;object-fit:contain;}
+.vc-actions{display:flex;align-items:center;gap:14px;margin-top:7px;font-family:var(--font-ui);font-size:11px;font-weight:700;}
+.vc-actions button{background:none;border:none;cursor:pointer;font:inherit;padding:0;display:flex;align-items:center;gap:4px;color:var(--text3);}
+.vc-actions button.on,.vc-actions button:hover{color:var(--text);}
+@media (max-width:560px){.vault-grid{grid-template-columns:1fr;} .pinned-row{grid-template-columns:repeat(2,1fr);}}
 
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
 .pcard{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative;}
@@ -3139,21 +3168,91 @@ function migrateMomntCategories() {
   if (changed) { try { LS.save('moments', savedMoments); } catch(e){} }
 }
 
+var momntFilter = 'all';
+function setMomntFilter(f) { momntFilter = f; renderMoments(); }
+function flipMomnt(card) { card.classList.toggle('flipped'); }
+function escMomnt(s) { return ('' + (s || '')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function togglePinMomnt(id, ev) {
+  if (ev) ev.stopPropagation();
+  var m = savedMoments.find(function(x){ return x.id === id; });
+  if (!m) return;
+  if (!m.pinned) {
+    var n = savedMoments.filter(function(x){ return x.pinned; }).length;
+    if (n >= 4) { alert('You can pin up to 4 favorite momnts. Unpin one first.'); return; }
+  }
+  m.pinned = !m.pinned;
+  LS.save('moments', savedMoments);
+  renderMoments();
+}
+function openMomntGame(gameId, ev) {
+  if (ev) ev.stopPropagation();
+  if (gameId) openGameDetail(gameId);
+}
+
+// One flip card for a momnt (front = medallion/title/tier, back = details + linked game).
+function momntCardHTML(m) {
+  var meta = momntMeta(m.category);
+  var d = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  var med = '<div class="vc-medallion" style="background:'+meta.bg+'">'+medallionSVG(m.category,30)+'</div>';
+  var tierChip = '<span class="vc-tier" style="background:'+meta.bg+';color:'+meta.color+'">'+meta.tierLabel+'</span>';
+  var front = '<div class="vc-front" style="border-left-color:'+meta.color+'">'+med
+    + '<div class="vc-title">'+escMomnt(m.title)+'</div>'+tierChip
+    + '<div class="vc-date">'+(d ? d.toUpperCase() : '')+(m.league?' · '+m.league:'')+'</div></div>';
+
+  var game = m.gameId ? savedGames.find(function(x){ return x.id === m.gameId; }) : null;
+  var bodyHTML;
+  if (game) {
+    game = canonicalGame(game);
+    var aImg = game.awayLogo ? '<img src="'+game.awayLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
+    var hImg = game.homeLogo ? '<img src="'+game.homeLogo+'" alt="" onerror="this.style.visibility=\'hidden\'">' : '';
+    var sc = (game.homeScore!==''&&game.awayScore!==''&&game.homeScore!=null&&game.awayScore!=null) ? game.awayScore+'–'+game.homeScore : '';
+    bodyHTML = '<div class="vc-back-game">'+aImg+'<span style="font-size:11px;font-weight:700;color:var(--text);">'+escMomnt(game.awayTeam)+' '+sc+' '+escMomnt(game.homeTeam)+'</span>'+hImg+'</div>'
+      + ((m.venue||game.venue) ? '<div>'+escMomnt(m.venue||game.venue)+'</div>' : '')
+      + (d ? '<div>'+d+'</div>' : '');
+  } else {
+    bodyHTML = (d ? '<div>'+d+'</div>' : '') + (m.venue ? '<div>'+escMomnt(m.venue)+'</div>' : '') + (m.league ? '<div>'+m.league+'</div>' : '');
+  }
+  var pinBtn = '<button class="'+(m.pinned?'on':'')+'" onclick="togglePinMomnt(\''+m.id+'\',event)" style="'+(m.pinned?'color:#f4a62a;':'')+'">'+(m.pinned?'★ pinned':'☆ pin')+'</button>';
+  var gameBtn = m.gameId ? '<button onclick="openMomntGame(\''+m.gameId+'\',event)">↗ game</button>' : '';
+  var delBtn = m.gameId ? '' : '<button onclick="deleteMoment(\''+m.id+'\',event)" style="margin-left:auto;">×</button>';
+  var back = '<div class="vc-back"><div class="vc-back-cat" style="color:'+meta.color+'">'+escMomnt(meta.label)+'</div>'
+    + '<div class="vc-back-title">'+escMomnt(m.title)+'</div>'
+    + '<div class="vc-back-body">'+bodyHTML+'</div>'
+    + '<div class="vc-actions">'+pinBtn+gameBtn+delBtn+'</div></div>';
+
+  return '<div class="vault-card" onclick="flipMomnt(this)"><div class="vc-inner">'+front+back+'</div></div>';
+}
+
 function renderMoments() {
   var el = document.getElementById('moments-list');
   if (!el) return;
   if (!savedMoments || savedMoments.length === 0) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0;line-height:1.6;">No momnts yet. Playoff games you log are added here automatically \u2014 or hit <span style="color:var(--accent);">Log a momnt</span> to add a no-hitter, a walk-off, a record night, anything you witnessed.</div>';
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0;line-height:1.6;">No momnts yet. Playoff games you log are added here automatically — or hit <span style="color:var(--accent);">Log a momnt</span> to add a no-hitter, a walk-off, a record night, anything you witnessed.</div>';
     return;
   }
-  el.innerHTML = savedMoments.map(function(m){
-    var color = m.type === 'Playoff' ? '#f4a62a' : 'var(--purple)';
-    var badgeBg = m.type === 'Playoff' ? 'rgba(244,166,42,.15)' : 'rgba(108,99,255,.15)';
-    var badgeCol = m.type === 'Playoff' ? '#f0c060' : '#a9a2ff';
-    var d = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-    var delBtn = m.gameId ? '' : '<button onclick="deleteMoment(\''+m.id+'\',event)" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px;margin-left:auto;align-self:flex-start;" title="Delete momnt">×</button>';
-    return '<div class="mc" style="border-left-color:'+color+';display:flex;align-items:flex-start;gap:8px;"><div style="flex:1;min-width:0;"><div class="mt">'+m.title+'</div><div class="mm">'+d+(m.venue?' · '+m.venue:'')+(m.league?' · '+m.league:'')+'</div><span class="mb" style="background:'+badgeBg+';color:'+badgeCol+'">'+(m.type||'Momnt')+'</span></div>'+delBtn+'</div>';
-  }).join('');
+
+  var counts = { legendary:0, epic:0, rare:0, notable:0 };
+  savedMoments.forEach(function(m){ var t = momntMeta(m.category).tier; counts[t] = (counts[t]||0)+1; });
+  function statChip(tierKey, n){ if(!n) return ''; var t = MOMNT_TIERS[tierKey]; return '<span class="momnt-stat" style="background:'+t.bg+';color:'+t.color+'">'+n+' '+t.label+'</span>'; }
+  var stats = '<div class="momnt-stats">'+statChip('legendary',counts.legendary)+statChip('epic',counts.epic)+statChip('rare',counts.rare)+statChip('notable',counts.notable)
+    + '<span class="momnt-stat" style="background:var(--bg3);color:var(--text2)">'+savedMoments.length+' total</span></div>';
+
+  var pinned = savedMoments.filter(function(m){ return m.pinned; }).slice(0,4);
+  var pinnedHTML = pinned.length ? '<div class="lbl" style="margin-top:16px;">Pinned</div><div class="pinned-row">'+pinned.map(momntCardHTML).join('')+'</div>' : '';
+
+  var tiers = ['all','legendary','epic','rare','notable'];
+  var filters = '<div class="momnt-filters">'+tiers.map(function(t){
+    var lbl = t==='all' ? 'All' : MOMNT_TIERS[t].label;
+    return '<button class="mfilt'+(momntFilter===t?' on':'')+'" onclick="setMomntFilter(\''+t+'\')">'+lbl+'</button>';
+  }).join('')+'</div>';
+
+  var list = momntFilter==='all' ? savedMoments : savedMoments.filter(function(m){ return momntMeta(m.category).tier === momntFilter; });
+  var vault = '<div class="lbl" style="margin-top:18px;">The Vault</div>'+filters
+    + (list.length ? '<div class="vault-grid">'+list.map(momntCardHTML).join('')+'</div>'
+                   : '<div style="color:var(--text3);font-size:12px;padding:8px 0;">No '+momntFilter+' momnts yet.</div>');
+
+  el.innerHTML = stats + pinnedHTML + vault;
 }
 
 // ── VENUE DETAIL MODAL (visited stadium: view games here or log a new one) ──
