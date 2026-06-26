@@ -192,6 +192,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .vc-actions button{background:none;border:none;cursor:pointer;font:inherit;padding:0;display:flex;align-items:center;gap:4px;color:var(--text3);}
 .vc-actions button.on,.vc-actions button:hover{color:var(--text);}
 @media (max-width:560px){.vault-grid{grid-template-columns:1fr;} .pinned-row{grid-template-columns:repeat(2,1fr);}}
+.vault-empty{position:relative;margin-top:14px;min-height:330px;}
+.vault-empty .faux{filter:blur(3px) saturate(.75);opacity:.45;pointer-events:none;user-select:none;}
+.vault-empty-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:11px;padding:24px;
+  background:radial-gradient(ellipse at center, rgba(13,14,16,.72) 0%, rgba(13,14,16,.92) 70%);}
+.vault-empty-title{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--paper);}
+.vault-empty-sub{font-size:12.5px;color:var(--text2);line-height:1.55;max-width:340px;}
+.vault-empty-btn{background:var(--accent);border:none;border-radius:9px;padding:10px 20px;color:#0D0E10;font-family:var(--font-ui);font-size:13px;font-weight:700;cursor:pointer;margin-top:4px;}
 
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
 .pcard{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;position:relative;}
@@ -1148,6 +1155,10 @@ textarea.mi{resize:none;height:68px;}
         <div id="fphoto-preview" style="display:none;"><img id="fphoto-img" src="" alt=""><button type="button" class="fphoto-remove" onclick="removePhoto(event)">×</button></div>
       </div>
     </div>
+    <div class="mf" id="fsave-momnt-row" style="display:flex;align-items:center;gap:9px;cursor:pointer;" onclick="toggleSaveMomnt()">
+      <span id="fsave-momnt-box" style="width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#0D0E10;"></span>
+      <span style="font-size:13px;color:var(--text2);">⭐ Also save this as a momnt <span style="color:var(--text3);">— historic, rare or unforgettable</span></span>
+    </div>
     <div class="mbtns">
       <button class="mok" onclick="submitG()">Log game</button>
       <button class="mcan" onclick="closeM()">Cancel</button>
@@ -1670,6 +1681,16 @@ function renderPins() {
 let curPrefill = null;
 let curHomeAway = 'home';
 let curNeutral = false;
+let curSaveMomnt = false;
+function toggleSaveMomnt() {
+  curSaveMomnt = !curSaveMomnt;
+  var box = document.getElementById('fsave-momnt-box');
+  if (box) {
+    box.style.background = curSaveMomnt ? 'var(--accent)' : 'transparent';
+    box.style.borderColor = curSaveMomnt ? 'var(--accent)' : 'var(--border2)';
+    box.textContent = curSaveMomnt ? '✓' : '';
+  }
+}
 let curPhoto = ''; // base64 data URI of the attached photo (downscaled)
 
 // Read a selected image, downscale it, and store as a compressed JPEG data URI
@@ -1791,6 +1812,9 @@ function openModal(pin, prefill) {
   document.getElementById('fscore-home').value = homeScore;
   document.getElementById('fscore-away').value = awayScore;
   setHomeAway(ha);
+  curSaveMomnt = false;
+  var smBox = document.getElementById('fsave-momnt-box');
+  if (smBox) { smBox.style.background = 'transparent'; smBox.style.borderColor = 'var(--border2)'; smBox.textContent = ''; }
 
   document.getElementById('fseat').value = '';
   document.getElementById('fcompanions').value = '';
@@ -2837,6 +2861,24 @@ function submitG() {
     checklistDone[3] = true;
   }
 
+  // "Also save as a momnt" toggle — link a momnt to this game, auto-categorized
+  // from the notes (e.g. "buzzer beater") or a detected shutout. (Playoff games
+  // already added above; addMoment dedupes by gameId so no duplicate.)
+  if (curSaveMomnt) {
+    var smCat = tagToCategory(notes);
+    if (smCat === 'other') {
+      var sh = parseInt(scoreHome,10), sa = parseInt(scoreAway,10);
+      if (!isNaN(sh) && !isNaN(sa) && ((sh===0&&sa>0)||(sa===0&&sh>0))) smCat = 'shutout';
+    }
+    var smTitle = (notes && notes.trim()) ? notes.trim().split('\n')[0].slice(0,80) : (awayTeam + ' @ ' + homeTeam);
+    addMoment({
+      title: smTitle, date: date, venue: venue, league: (league||'').toUpperCase(),
+      gameId: gameId, category: smCat,
+      type: (MOMNT_CATS[smCat] ? MOMNT_CATS[smCat].label : 'Momnt')
+    });
+    checklistDone[3] = true;
+  }
+
   saveState();
   renderChecklist();
   renderGameLog();
@@ -3263,7 +3305,20 @@ function renderMoments() {
   var el = document.getElementById('moments-list');
   if (!el) return;
   if (!savedMoments || savedMoments.length === 0) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0;line-height:1.6;">No momnts yet. Playoff games you log are added here automatically — or hit <span style="color:var(--accent);">Log a momnt</span> to add a no-hitter, a walk-off, a record night, anything you witnessed.</div>';
+    // Faux blurred Vault behind an inspirational overlay (teaser for new users).
+    var faux = [
+      {id:'fx1',title:'AFC Championship clincher',category:'playoff',tier:'legendary',date:'2024-01-28',league:'NFL'},
+      {id:'fx2',title:'Verlander throws a no-hitter',category:'no-hitter',date:'2019-09-01',league:'MLB'},
+      {id:'fx3',title:'Walk-off in the 11th',category:'walk-off',date:'2022-07-04',league:'MLB'},
+      {id:'fx4',title:'Triple-double masterpiece',category:'feat',date:'2023-03-10',league:'NBA'},
+      {id:'fx5',title:'My first ever game',category:'debut',date:'2005-06-12',league:'MLB'},
+      {id:'fx6',title:'Overtime thriller',category:'overtime',date:'2021-05-02',league:'NHL'}
+    ];
+    el.innerHTML = '<div class="vault-empty">'
+      + '<div class="faux"><div class="vault-grid">'+faux.map(momntCardHTML).join('')+'</div></div>'
+      + '<div class="vault-empty-overlay"><div class="vault-empty-title">your vault awaits</div>'
+      + '<div class="vault-empty-sub">The historic, the rare, the unforgettable — you were there. Playoff games and big feats land here automatically, or add your own.</div>'
+      + '<button class="vault-empty-btn" onclick="openMomentModal()">+ log your first momnt</button></div></div>';
     return;
   }
 
