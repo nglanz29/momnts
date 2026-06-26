@@ -2085,7 +2085,8 @@ async function spGoStep3() {
           homeAway: iWasHome ? 'home' : 'away',
           eventId: ev.id,
           completed: completed,
-          isPlayoff: sp.seasonType === 'post'
+          isPlayoff: sp.seasonType === 'post',
+          playoffRound: sp.seasonType === 'post' ? playoffRoundFromEvent(ev) : ''
         });
       });
 
@@ -2731,7 +2732,7 @@ function submitG() {
   const companions=document.getElementById('fcompanions').value.trim();
   const notes=document.getElementById('fnotes').value;
   const photo=curPhoto;
-  let logo='',team='Game',venue='',league='',pinId=null,homeAway='',isPlayoff=false,eventId='',homeLogo='',oppLogo='';
+  let logo='',team='Game',venue='',league='',pinId=null,homeAway='',isPlayoff=false,eventId='',homeLogo='',oppLogo='',playoffRound='';
   if (curPin) {
     [,,, league,,venue,team,logo]=curPin;
     league = league || '';
@@ -2741,6 +2742,7 @@ function submitG() {
     venue=curPrefill.venue||''; league=curPrefill.league||'';
     pinId=curPrefill.pinId||null;
     isPlayoff=curPrefill.isPlayoff||false;
+    playoffRound=curPrefill.playoffRound||'';
     eventId=curPrefill.eventId||'';
     homeLogo=curPrefill.homeLogo||'';
     oppLogo=curPrefill.oppLogo||'';
@@ -2802,6 +2804,7 @@ function submitG() {
     companions: companions,
     photo: photo,
     isPlayoff: isPlayoff,
+    playoffRound: playoffRound,
     eventId: eventId,
     players: []
   };
@@ -2819,15 +2822,17 @@ function submitG() {
   checklistDone[0] = true;
   if (pinId) checklistDone[1] = true;
 
-  // Auto-add playoff games as moments
+  // Auto-add playoff games as moments (titled + tiered by the actual round)
   if (isPlayoff) {
+    var roundLabel = playoffRound || 'Playoffs';
     addMoment({
-      title: team + ' ' + (homeAway === 'home' ? 'vs' : '@') + ' ' + opp + ' (Playoffs)',
+      title: team + ' ' + (homeAway === 'home' ? 'vs' : '@') + ' ' + opp + ' · ' + roundLabel,
       date: date,
       venue: venue,
       league: (league||'').toUpperCase(),
       gameId: gameId,
-      type: 'Playoff'
+      type: 'Playoff',
+      tier: playoffTierFromLabel(roundLabel)
     });
     checklistDone[3] = true;
   }
@@ -3128,10 +3133,28 @@ var MOMNT_ICONS = {
   spark:'<path d="M12 4v16M4 12h16M6.5 6.5l11 11M17.5 6.5l-11 11"/>'
 };
 // Resolve a category key to its display meta (tier color/label + icon).
-function momntMeta(cat) {
+function momntMeta(arg) {
+  var cat, override;
+  if (arg && typeof arg === 'object') { cat = arg.category; override = arg.tier; }
+  else { cat = arg; }
   var c = MOMNT_CATS[cat] || MOMNT_CATS.other;
-  var t = MOMNT_TIERS[c.tier] || MOMNT_TIERS.notable;
-  return { label:c.label, icon:c.icon, tier:c.tier, tierLabel:t.label, color:t.color, bg:t.bg };
+  var tierKey = (override && MOMNT_TIERS[override]) ? override : c.tier;
+  var t = MOMNT_TIERS[tierKey] || MOMNT_TIERS.notable;
+  return { label:c.label, icon:c.icon, tier:tierKey, tierLabel:t.label, color:t.color, bg:t.bg };
+}
+// Derive a playoff round label + rarity tier from an ESPN schedule event.
+function playoffTierFromLabel(label) {
+  var t = (label || '').toLowerCase();
+  if (/super bowl|world series|stanley cup|nba finals|conference championship|afc championship|nfc championship|conference final|lcs|championship series|\bfinals?\b/.test(t)) return 'legendary';
+  if (/divisional|division series|lds|2nd round|second round|semifinal/.test(t)) return 'epic';
+  if (/wild ?card|1st round|first round|play-?in/.test(t)) return 'rare';
+  return 'epic';
+}
+function playoffRoundFromEvent(ev) {
+  var week = ev && ev.week && ev.week.text ? ev.week.text : '';
+  var comp = ev && ev.competitions && ev.competitions[0];
+  var note = comp && comp.notes && comp.notes[0] && comp.notes[0].headline ? comp.notes[0].headline : '';
+  return note || week || '';
 }
 // Build a medallion <svg> for a category at a given pixel size, tinted by tier.
 function medallionSVG(cat, px) {
@@ -3196,12 +3219,12 @@ function openMomntGame(gameId, ev) {
 
 // One flip card for a momnt (front = medallion/title/tier, back = details + linked game).
 function momntCardHTML(m) {
-  var meta = momntMeta(m.category);
+  var meta = momntMeta(m);
   var d = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
   var rawGame = m.gameId ? savedGames.find(function(x){ return x.id === m.gameId; }) : null;
   var game = rawGame ? canonicalGame(rawGame) : null;
 
-  var med = '<div class="vc-medallion" style="background:'+meta.bg+'">'+medallionSVG(m.category,32)+'</div>';
+  var med = '<div class="vc-medallion" style="background:'+meta.bg+'">'+medallionSVG(m,32)+'</div>';
   var tierChip = '<span class="vc-tier" style="background:'+meta.bg+';color:'+meta.color+'">'+meta.tierLabel+'</span>';
   var frontLogos = '';
   if (game) {
@@ -3245,7 +3268,7 @@ function renderMoments() {
   }
 
   var counts = { legendary:0, epic:0, rare:0, notable:0 };
-  savedMoments.forEach(function(m){ var t = momntMeta(m.category).tier; counts[t] = (counts[t]||0)+1; });
+  savedMoments.forEach(function(m){ var t = momntMeta(m).tier; counts[t] = (counts[t]||0)+1; });
   function statChip(tierKey, n){ if(!n) return ''; var t = MOMNT_TIERS[tierKey]; return '<span class="momnt-stat" style="background:'+t.bg+';color:'+t.color+'">'+n+' '+t.label+'</span>'; }
   var stats = '<div class="momnt-stats">'+statChip('legendary',counts.legendary)+statChip('epic',counts.epic)+statChip('rare',counts.rare)+statChip('notable',counts.notable)
     + '<span class="momnt-stat" style="background:var(--bg3);color:var(--text2)">'+savedMoments.length+' total</span></div>';
@@ -3259,7 +3282,7 @@ function renderMoments() {
     return '<button class="mfilt'+(momntFilter===t?' on':'')+'" onclick="setMomntFilter(\''+t+'\')">'+lbl+'</button>';
   }).join('')+'</div>';
 
-  var list = momntFilter==='all' ? savedMoments : savedMoments.filter(function(m){ return momntMeta(m.category).tier === momntFilter; });
+  var list = momntFilter==='all' ? savedMoments : savedMoments.filter(function(m){ return momntMeta(m).tier === momntFilter; });
   var vault = '<div class="lbl" style="margin-top:18px;">The Vault</div>'+filters
     + (list.length ? '<div class="vault-grid">'+list.map(momntCardHTML).join('')+'</div>'
                    : '<div style="color:var(--text3);font-size:12px;padding:8px 0;">No '+momntFilter+' momnts yet.</div>');
@@ -3292,7 +3315,7 @@ function openVenueModal(pinId, league, team, logo, venue) {
       var resTxt = myResult==='W'?'W':myResult==='L'?'L':myResult==='T'?'T':'';
       return '<div onclick="venueOpenGame(\''+g.id+'\')" style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor=\'var(--border2)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
         + '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+g.awayTeam+' @ '+g.homeTeam+'</div>'
-        + '<div style="font-size:11.5px;color:var(--text3);margin-top:2px;">'+dateStr+(g.isPlayoff?' · playoff':'')+'</div></div>'
+        + '<div style="font-size:11.5px;color:var(--text3);margin-top:2px;">'+dateStr+(g.isPlayoff?' · '+(g.playoffRound||'playoff'):'')+'</div></div>'
         + (score ? '<div style="text-align:right;flex-shrink:0;"><div style="font-family:var(--font-display);font-size:15px;font-weight:700;">'+score+'</div>'+(resTxt?'<div style="font-size:10px;font-weight:700;color:'+rc+';">'+resTxt+'</div>':'')+'</div>' : '')
         + '</div>';
     }).join('');
@@ -3394,7 +3417,7 @@ function openGameDetail(gameId) {
     body += '<div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;">'
       + '<div style="font-size:32px;font-weight:700;">'+g.awayScore+'–'+g.homeScore+'</div>'
       + (resWord ? '<div style="font-size:14px;font-weight:600;color:'+resColor+';">'+resWord+' for '+g.myTeam+'</div>' : '')
-      + (g.isPlayoff ? '<div style="font-size:11px;font-weight:600;background:rgba(244,166,42,.15);color:#f0c060;padding:3px 10px;border-radius:20px;">Playoff</div>' : '')
+      + (g.isPlayoff ? '<div style="font-size:11px;font-weight:600;background:rgba(244,166,42,.15);color:#f0c060;padding:3px 10px;border-radius:20px;">'+(g.playoffRound||'Playoff')+'</div>' : '')
       + '</div>';
   }
   // Photo from the game (shown prominently at the top of the body)
