@@ -112,6 +112,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .tk-scrim{position:absolute;inset:0;background:rgba(0,0,0,.16);pointer-events:none;}
 .ticket-body.has-photo .tk-scrim{background:rgba(0,0,0,.5);}
 .tk-inner{position:relative;z-index:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
+.tk-round{align-self:flex-start;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ffd98a;background:rgba(0,0,0,.32);border:1px solid rgba(255,217,138,.5);padding:2px 8px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .tk-date{font-family:var(--font-ui);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tk-match{display:flex;align-items:center;gap:11px;min-width:0;overflow:hidden;}
 .tk-match img{width:36px;height:36px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));}
@@ -1157,7 +1158,7 @@ textarea.mi{resize:none;height:68px;}
     </div>
     <div class="mf" id="fsave-momnt-row" style="display:flex;align-items:center;gap:9px;cursor:pointer;" onclick="toggleSaveMomnt()">
       <span id="fsave-momnt-box" style="width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#0D0E10;"></span>
-      <span style="font-size:13px;color:var(--text2);">⭐ Also save this as a momnt <span style="color:var(--text3);">— historic, rare or unforgettable</span></span>
+      <span style="font-size:13px;color:var(--text2);">⭐ Also save this as a momnt <span style="color:var(--text3);">— historic, rare or unforgettable</span><span id="fsave-momnt-note" style="color:var(--accent);font-size:11px;"></span></span>
     </div>
     <div class="mbtns">
       <button class="mok" onclick="submitG()">Log game</button>
@@ -1812,9 +1813,16 @@ function openModal(pin, prefill) {
   document.getElementById('fscore-home').value = homeScore;
   document.getElementById('fscore-away').value = awayScore;
   setHomeAway(ha);
-  curSaveMomnt = false;
+  // Playoff games always become a momnt — pre-check the box (dedupe handles it) for clarity.
+  curSaveMomnt = !!(prefill && prefill.isPlayoff);
   var smBox = document.getElementById('fsave-momnt-box');
-  if (smBox) { smBox.style.background = 'transparent'; smBox.style.borderColor = 'var(--border2)'; smBox.textContent = ''; }
+  if (smBox) {
+    smBox.style.background = curSaveMomnt ? 'var(--accent)' : 'transparent';
+    smBox.style.borderColor = curSaveMomnt ? 'var(--accent)' : 'var(--border2)';
+    smBox.textContent = curSaveMomnt ? '✓' : '';
+  }
+  var smNote = document.getElementById('fsave-momnt-note');
+  if (smNote) smNote.textContent = curSaveMomnt ? ' (playoff games are always saved)' : '';
 
   document.getElementById('fseat').value = '';
   document.getElementById('fcompanions').value = '';
@@ -2967,11 +2975,13 @@ function gameCardHtml(g) {
     : 'background:'+scan+', '+grad+';';
 
   var dateText = weekday+' · '+mo+' '+day+' · '+yr;
+  var roundHtml = (g.isPlayoff && g.playoffRound) ? '<div class="tk-round">'+g.playoffRound+'</div>' : '';
 
   return '<div class="ticket" data-gameid="'+g.id+'" data-league="'+g.league+'" data-result="'+(myResult||'')+'" onclick="openGameDetail(\''+g.id+'\')">'
     + '<div class="ticket-body'+(g.photo?' has-photo':'')+'" style="'+bodyBg+'">'
       + '<div class="tk-scrim"></div>'
       + '<div class="tk-inner">'
+        + roundHtml
         + '<div class="tk-date">'+dateText+'</div>'
         + '<div class="tk-match">'+awayImg+'<span class="tk-team">'+g.awayTeam+'</span><span class="tk-dot">·</span><span class="tk-team">'+g.homeTeam+'</span>'+homeImg+'</div>'
         + venueHtml
@@ -3057,7 +3067,16 @@ function renderGameLog() {
   var list = document.getElementById('loglist');
   if (!list) return;
   if (savedGames.length === 0) {
-    list.innerHTML = '<div id="log-empty" style="color:var(--text3);font-size:13px;padding:16px 0;">No games logged yet. Hit "Log a game" to get started.</div>';
+    // Faux blurred ticket stubs behind an inspirational overlay (teaser for new users).
+    var fauxGames = [
+      {id:'fxg1',date:'2024-01-28',team:'Cincinnati Bengals',opponent:'Kansas City Chiefs',homeAway:'away',scoreUs:24,scoreThem:27,league:'NFL',venue:'Arrowhead Stadium',myTeamLogo:'https://a.espncdn.com/i/teamlogos/nfl/500/cin.png',isPlayoff:true,playoffRound:'AFC Championship',momntNo:12},
+      {id:'fxg2',date:'2023-08-19',team:'Los Angeles Dodgers',opponent:'San Francisco Giants',homeAway:'home',scoreUs:5,scoreThem:3,league:'MLB',venue:'Dodger Stadium',myTeamLogo:'https://a.espncdn.com/i/teamlogos/mlb/500/lad.png',momntNo:8},
+      {id:'fxg3',date:'2023-03-10',team:'Boston Celtics',opponent:'Los Angeles Lakers',homeAway:'home',scoreUs:114,scoreThem:108,league:'NBA',venue:'TD Garden',myTeamLogo:'https://a.espncdn.com/i/teamlogos/nba/500/bos.png',momntNo:5}
+    ];
+    list.innerHTML = '<div class="vault-empty"><div class="faux"><div class="gl">'+fauxGames.map(ticketHtml).join('')+'</div></div>'
+      + '<div class="vault-empty-overlay"><div class="vault-empty-title">your game log awaits</div>'
+      + '<div class="vault-empty-sub">Every game you attend becomes a commemorative ticket stub — the matchup, the score, the seat. Start your collection.</div>'
+      + '<button class="vault-empty-btn" onclick="openSchedModal()">+ log your first game</button></div></div>';
     return;
   }
   // Search query + sort mode
@@ -3657,6 +3676,11 @@ function shareStub() {
         ctx.beginPath(); ctx.arc(cardX+cardW, perfY, 26, 0, Math.PI*2); ctx.fill();
 
         // ---- BODY: stacked matchup ----
+        if (g.isPlayoff && g.playoffRound) {
+          ctx.fillStyle = '#ffd98a';
+          ctx.font = '700 21px "JetBrains Mono", monospace';
+          ctx.fillText(g.playoffRound.toUpperCase(), cx, cardY+52);
+        }
         var logoSz = 165;
         if (useImages && awayImg && awayImg.width) ctx.drawImage(awayImg, cx-logoSz/2, cardY+150-logoSz/2, logoSz, logoSz);
         if (useImages && homeImg && homeImg.width) ctx.drawImage(homeImg, cx-logoSz/2, cardY+410-logoSz/2, logoSz, logoSz);
