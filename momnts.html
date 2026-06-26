@@ -3337,6 +3337,7 @@ function submitMoment() {
     league: document.getElementById('mom-league').value,
     type: document.getElementById('mom-type').value.trim() || 'Momnt'
   };
+  moment.category = tagToCategory(moment.type);
   moment.id = 'm' + Date.now();
   if (!savedMoments) savedMoments = [];
   // Insert sorted by date (newest first)
