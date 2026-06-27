@@ -547,12 +547,12 @@ textarea.mi{resize:none;height:68px;}
 .ob-skip{display:block;text-align:center;font-size:13px;color:var(--text3);margin-top:14px;cursor:pointer;}
 .ob-skip:hover{color:var(--text2);}
 /* Animated blurred card collage behind the onboarding form (slot-machine reels) */
-#ob-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;display:flex;justify-content:center;gap:22px;filter:blur(5.5px) saturate(.9);opacity:.42;}
+#ob-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;display:flex;justify-content:center;gap:22px;filter:blur(4px) saturate(.95);opacity:.5;}
 .ob-reel{flex:0 0 340px;}
 .ob-reel-inner{display:flex;flex-direction:column;gap:22px;will-change:transform;animation:ob-reel-up 90s linear infinite;}
 .ob-reel-inner.down{animation-name:ob-reel-down;}
 .ob-w{width:340px;}
-#ob-bg-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 62% 56% at center, rgba(13,14,16,.55) 0%, rgba(13,14,16,.82) 46%, rgba(13,14,16,.96) 100%);}
+#ob-bg-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 62% 56% at center, rgba(13,14,16,.5) 0%, rgba(13,14,16,.72) 46%, rgba(13,14,16,.88) 100%);}
 @keyframes ob-reel-up{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 @keyframes ob-reel-down{from{transform:translateY(-50%)}to{transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.ob-reel-inner{animation:none;}}
