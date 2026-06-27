@@ -337,6 +337,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .chip{padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
 .chip:hover{border-color:var(--border2);color:var(--text);}
 .chip.on{background:var(--signal);color:#0D0E10;border-color:var(--signal);font-weight:600;}
+.catchips{display:flex;gap:7px;flex-wrap:wrap;}
+.catchip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:20px;font-size:12px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;}
+.catchip:hover{border-color:var(--border2);color:var(--text);}
+.catchip.on{font-weight:600;color:var(--text);}
+.catchip svg{flex-shrink:0;}
 .abtn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;color:var(--text2);margin-bottom:14px;transition:all .15s;}
 .abtn:hover{background:var(--bg3);color:var(--text);}
 .yrl{font-family:var(--font-ui);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);padding:10px 0 5px;border-top:1px solid var(--border);margin-top:4px;}
@@ -1032,7 +1037,7 @@ textarea.mi{resize:none;height:68px;}
       <div class="mf"><label class="mlb2">League <span style="color:var(--text3);font-weight:400;">(optional)</span></label>
         <select id="mom-league" class="mi"><option value="">—</option><option value="MLB">MLB</option><option value="NFL">NFL</option><option value="NBA">NBA</option><option value="NHL">NHL</option></select>
       </div>
-      <div class="mf"><label class="mlb2">Tag <span style="color:var(--text3);font-weight:400;">(optional)</span></label><input type="text" id="mom-type" placeholder="e.g. Milestone, Record, Walk-off" class="mi"></div>
+      <div class="mf"><label class="mlb2">Category</label><div id="mom-cats" class="catchips"></div></div>
     </div>
     <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;gap:9px;justify-content:flex-end;flex-shrink:0;">
       <button onclick="closeMomentModal()" style="background:none;border:1px solid var(--border2);border-radius:8px;padding:8px 16px;color:var(--text2);font-size:13px;cursor:pointer;">Cancel</button>
@@ -3584,12 +3589,35 @@ function venueLogNew() {
   m.style.visibility='visible'; m.style.opacity='1'; m.style.pointerEvents='all';
 }
 
+// Categories offered as quick-pick chips (game-derived 'playoff' is omitted).
+var MOMNT_CAT_PICKS = ['championship','record','milestone','no-hitter','perfect-game','walk-off','buzzer-beater','comeback','overtime','shutout','feat','debut','other'];
+var curMomntCat = 'other';
+function renderMomntCatChips() {
+  var wrap = document.getElementById('mom-cats');
+  if (!wrap) return;
+  wrap.innerHTML = MOMNT_CAT_PICKS.map(function(k){
+    var lbl = (k === 'other') ? 'Other' : momntMeta(k).label;
+    return '<button type="button" class="catchip" data-cat="'+k+'" onclick="pickMomntCat(\''+k+'\',this)">'+medallionSVG(k,15)+'<span>'+lbl+'</span></button>';
+  }).join('');
+}
+function pickMomntCat(cat, el) {
+  curMomntCat = cat;
+  var wrap = document.getElementById('mom-cats');
+  if (wrap) wrap.querySelectorAll('.catchip').forEach(function(c){ c.classList.remove('on'); c.style.borderColor=''; c.style.background=''; });
+  var meta = momntMeta(cat);
+  el.classList.add('on');
+  el.style.borderColor = meta.color;
+  el.style.background = meta.bg;
+}
 function openMomentModal() {
   document.getElementById('mom-title').value = '';
   document.getElementById('mom-date').value = '';
   document.getElementById('mom-venue').value = '';
   document.getElementById('mom-league').value = '';
-  document.getElementById('mom-type').value = '';
+  curMomntCat = 'other';
+  renderMomntCatChips();
+  var otherChip = document.querySelector('#mom-cats .catchip[data-cat="other"]');
+  if (otherChip) pickMomntCat('other', otherChip);
   var m = document.getElementById('moment-modal');
   m.style.visibility='visible'; m.style.opacity='1'; m.style.pointerEvents='all';
   setTimeout(function(){ document.getElementById('mom-title').focus(); }, 60);
@@ -3609,10 +3637,11 @@ function submitMoment() {
     title: title,
     date: date,
     venue: document.getElementById('mom-venue').value.trim(),
-    league: document.getElementById('mom-league').value,
-    type: document.getElementById('mom-type').value.trim() || 'Momnt'
+    league: document.getElementById('mom-league').value
   };
-  moment.category = tagToCategory(moment.type);
+  var cat = (curMomntCat && MOMNT_CATS[curMomntCat]) ? curMomntCat : 'other';
+  moment.category = cat;
+  moment.type = MOMNT_CATS[cat].label;
   moment.id = 'm' + Date.now();
   if (!savedMoments) savedMoments = [];
   // Insert sorted by date (newest first)
