@@ -264,6 +264,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .posfilt.on{background:var(--accent);border-color:var(--accent);color:#0D0E10;}
 .pl-pos-hdr{font-family:var(--font-ui);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text2);margin:16px 0 8px;text-transform:uppercase;}
 .pl-pos-hdr span{color:var(--text3);font-weight:400;margin-left:5px;}
+.pl-more{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--accent);font-family:var(--font-ui);font-size:11px;font-weight:700;cursor:pointer;margin-top:9px;}
 .roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:9px;}
 .rost-card{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;transition:border-color .15s;cursor:pointer;position:relative;}
 .rost-card:hover{border-color:var(--border2);}
@@ -862,6 +863,10 @@ textarea.mi{resize:none;height:68px;}
     <span class="chip" onclick="ckip(this);filterPlayers('nba')">NBA</span>
     <span class="chip" onclick="ckip(this);filterPlayers('nhl')">NHL</span>
     <span class="chip" onclick="ckip(this);filterPlayers('hof')">hall of famers</span>
+  </div>
+  <div style="position:relative;max-width:320px;margin:0 0 4px;">
+    <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="pl-search" placeholder="Search players…" oninput="renderPlayers()" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px 9px 34px;color:var(--text);font-size:13px;outline:none;">
   </div>
   <div id="players-grid"></div>
 </div>
@@ -2437,6 +2442,9 @@ var LEAGUE_META = {
 
 var playerPosFilter = {};
 function setPosFilter(lg, pos) { playerPosFilter[lg] = pos; renderPlayers(); }
+var POS_CAP = 12;
+var expandedPlayerPos = {};
+function expandPlayerPos(key) { expandedPlayerPos[key] = true; renderPlayers(); }
 
 function renderPlayers() {
   const grid = document.getElementById('players-grid');
@@ -2467,18 +2475,36 @@ function renderPlayers() {
     leaguesToShow = [playerFilter];
   }
 
+  var sb = document.getElementById('pl-search');
+  var q = sb ? sb.value.trim().toLowerCase() : '';
+
+  function bySort(a,b){
+    if (a.fav && !b.fav) return -1;
+    if (b.fav && !a.fav) return 1;
+    if ((b.seen||0) !== (a.seen||0)) return (b.seen||0) - (a.seen||0);
+    return a.name.localeCompare(b.name);
+  }
+
   var html = '';
   leaguesToShow.forEach(function(lg){
     var players = playerList.filter(function(p){ return p.sport === lg && enabledLeagues.has(lg.toUpperCase()); });
     if (!players.length) return;
     var meta = LEAGUE_META[lg];
+    var leagueHdr = '<div class="pl-league-hdr"><img src="'+meta.logo+'" style="width:22px;height:22px;object-fit:contain;"><span>'+meta.label+'</span><span class="pl-league-count">';
 
-    html += '<div class="pl-league-hdr"><img src="'+meta.logo+'" style="width:22px;height:22px;object-fit:contain;"><span>'+meta.label+'</span><span class="pl-league-count">'+players.length+' player'+(players.length!==1?'s':'')+'</span></div>';
+    if (q) {
+      var matches = players.filter(function(p){ return p.name.toLowerCase().indexOf(q) > -1; }).sort(bySort);
+      if (!matches.length) return;
+      html += leagueHdr + matches.length+' match'+(matches.length!==1?'es':'')+'</span></div>';
+      html += '<div class="roster">'+matches.map(rosterCardHtml).join('')+'</div>';
+      return;
+    }
 
-    // Leaderboards (only render when there's stat data to rank)
+    html += leagueHdr + players.length+' player'+(players.length!==1?'s':'')+'</span></div>';
+
     var boards = playerLeaderboards(lg, players);
     if (boards.length) {
-      html += '<div class="pl-sub-hdr">\u2605 seen-live leaders</div>';
+      html += '<div class="pl-sub-hdr">★ seen-live leaders</div>';
       html += '<div class="lead-hero">';
       boards.forEach(function(board){
         html += '<div class="lead-card"><div class="lead-title">'+board.label+'</div>';
@@ -2495,14 +2521,7 @@ function renderPlayers() {
       html += '</div>';
     }
 
-    // Full roster, sorted: favorites, then most-seen, then name
-    var roster = players.slice().sort(function(a,b){
-      if (a.fav && !b.fav) return -1;
-      if (b.fav && !a.fav) return 1;
-      if ((b.seen||0) !== (a.seen||0)) return (b.seen||0) - (a.seen||0);
-      return a.name.localeCompare(b.name);
-    });
-    // Positions present, ordered by sport priority
+    var roster = players.slice().sort(bySort);
     var posList = [];
     roster.forEach(function(p){ var po = p.pos || '—'; if (posList.indexOf(po) === -1) posList.push(po); });
     posList.sort(function(a,b){ var d = posPriority(lg,a) - posPriority(lg,b); return d !== 0 ? d : a.localeCompare(b); });
@@ -2514,17 +2533,22 @@ function renderPlayers() {
       + posList.map(function(po){ return '<span class="posfilt'+(sel===po?' on':'')+'" onclick="setPosFilter(\''+lg+'\',\''+po+'\')">'+po+'</span>'; }).join('')
       + '</div>';
 
+    function renderGroup(po, showHdr) {
+      var group = roster.filter(function(p){ return (p.pos||'—') === po; });
+      var key = lg+':'+po, expanded = expandedPlayerPos[key];
+      var shown = expanded ? group : group.slice(0, POS_CAP);
+      var out = showHdr ? '<div class="pl-pos-hdr">'+po+' <span>'+group.length+'</span></div>' : '';
+      out += '<div class="roster">'+shown.map(rosterCardHtml).join('')+'</div>';
+      if (group.length > POS_CAP && !expanded) out += '<button class="pl-more" onclick="expandPlayerPos(\''+key+'\')">view all '+group.length+' '+po+' →</button>';
+      return out;
+    }
     if (sel === 'all') {
-      posList.forEach(function(po){
-        var group = roster.filter(function(p){ return (p.pos||'—') === po; });
-        html += '<div class="pl-pos-hdr">'+po+' <span>'+group.length+'</span></div>';
-        html += '<div class="roster">'+group.map(rosterCardHtml).join('')+'</div>';
-      });
+      posList.forEach(function(po){ html += renderGroup(po, true); });
     } else {
-      var group = roster.filter(function(p){ return (p.pos||'—') === sel; });
-      html += '<div class="roster">'+group.map(rosterCardHtml).join('')+'</div>';
+      html += renderGroup(sel, false);
     }
   });
+
 
   grid.innerHTML = html || '<div style="color:var(--text3);font-size:13px;padding:16px 0;">No players in this category yet.</div>';
 }
