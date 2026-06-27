@@ -15,7 +15,7 @@ A personal sports attendance tracker — Letterboxd meets the MLB Ballpark app m
 
 ## Architecture
 
-The entire app is **one self-contained file: `momnts.html`** — HTML, CSS, and JS inline, no build step, no framework, no dependencies to install. The only external runtime pieces are Google Fonts, D3.js (for the map), and ESPN's public JSON APIs, all loaded at runtime. State persists in the browser's `localStorage`; a JSON export/import is the backup mechanism.
+The entire app is **one self-contained file: `index.html`** — HTML, CSS, and JS inline, no build step, no framework, no dependencies to install. The only external runtime pieces are Google Fonts, D3.js (for the map), and ESPN's public JSON APIs, all loaded at runtime. State persists in the browser's `localStorage`; a JSON export/import is the backup mechanism.
 
 ## Running it locally
 
@@ -25,7 +25,7 @@ Serve the folder over http (so ESPN logos/headshots and PNG export work — `fil
 python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000/momnts.html>.
+Then open <http://localhost:8000/> (or `index.html` directly).
 
 ## Development
 
