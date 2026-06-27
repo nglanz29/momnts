@@ -5024,6 +5024,19 @@ function teamHubHTML(t, league, canon) {
       + (inv.length ? '<div class="thub-foot"><span class="thub-link" onclick="go(\'log\',null);setTimeout(function(){var s=document.getElementById(\'gl-search\');if(s){s.value=\''+searchTerm+'\';renderGameLog();}},120)">view '+inv.length+' game'+(inv.length!==1?'s':'')+' →</span></div>' : '')
     + '</div></div>';
 }
+// A populated-looking faux hub for the empty state (real teamHubHTML reads from
+// games, which are empty at this point, so we hand-build the teaser).
+function fauxTeamHubHTML(full, logo, c0, games, w, l, seen, venues, shots) {
+  var pct = Math.round(w/(w+l)*100);
+  var grad = 'linear-gradient(100deg,'+c0+' 0%, rgba(10,11,12,.92) 78%)';
+  var pRow = shots.map(function(s){ var u = espnShot(s.sport, s.id); return '<div class="thub-pl"><div class="thub-av" style="background-image:url(\''+u+'\')"></div></div>'; }).join('');
+  return '<div class="thub"><div class="thub-head" style="background:'+grad+'">'
+    + '<img class="thub-logo" src="'+logo+'" alt="" onerror="this.style.visibility=\'hidden\'">'
+    + '<div class="thub-id"><div class="thub-name">'+full+'</div><div class="thub-rec">'+w+'–'+l+' · '+pct+'% WHEN YOU\'RE THERE</div></div></div>'
+    + '<div class="thub-body"><div class="thub-stats">'+thubStat('GAMES',games)+thubStat('RECORD',w+'–'+l)+thubStat('PLAYERS SEEN',seen)+thubStat('VENUES',venues)+'</div>'
+    + '<div class="thub-lbl">PLAYERS SEEN LIVE</div><div class="thub-players">'+pRow+'</div></div></div>';
+}
+
 function renderTeamHubs() {
   var host = document.getElementById('team-hubs');
   if (!host) return;
@@ -5032,7 +5045,15 @@ function renderTeamHubs() {
     TEAMS[sp].forEach(function(t){ if (favs.has(t.id)) favTeams.push({ t:t, league:sp.toUpperCase() }); });
   });
   if (!favTeams.length) {
-    host.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:6px 0 14px">No favorites yet — add a team below to build its hub.</div>';
+    // Faux blurred team hubs behind an inspirational overlay (teaser for new users).
+    var fauxHubs = fauxTeamHubHTML('Los Angeles Dodgers','https://a.espncdn.com/i/teamlogos/mlb/500/lad.png','#1e5fa8',16,11,5,14,4,
+        [{sport:'mlb',id:'39832'},{sport:'mlb',id:'33039'},{sport:'mlb',id:'30193'},{sport:'mlb',id:'5275'}])
+      + fauxTeamHubHTML('Kansas City Chiefs','https://a.espncdn.com/i/teamlogos/nfl/500/kc.png','#c8102e',9,7,2,11,3,
+        [{sport:'nfl',id:'3139477'},{sport:'nfl',id:'15847'},{sport:'nfl',id:'4361741'}]);
+    host.innerHTML = '<div class="vault-empty"><div class="faux">'+fauxHubs+'</div>'
+      + '<div class="vault-empty-overlay"><div class="vault-empty-title">build your team hubs</div>'
+      + '<div class="vault-empty-sub">Pick your favorite teams and each gets a hub — your record when you\'re in the building, the players you\'ve seen them field, and every venue you\'ve caught them at.</div>'
+      + '<button class="vault-empty-btn" onclick="toggleAddTeam()">+ add your teams</button></div></div>';
     return;
   }
   var canon = savedGames.map(canonicalGame);
