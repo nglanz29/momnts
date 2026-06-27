@@ -2460,7 +2460,19 @@ function renderPlayers() {
     playerList.length + ' athlete' + (playerList.length !== 1 ? 's' : '') + ' seen live.';
 
   if (playerList.length === 0) {
-    grid.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:16px 0;line-height:1.6;">No players yet. Players are added automatically when you log a game with box-score data \u2014 or hit <span style="color:var(--accent);">Add player</span> to start your list.</div>';
+    // Faux blurred roster behind an inspirational overlay (teaser for new users).
+    var fauxPlayers = [
+      {id:'fxp1',name:'Shohei Ohtani',sport:'mlb',espnId:'39832',pos:'DH',team:'Los Angeles Dodgers',fav:true,seen:3},
+      {id:'fxp2',name:'Patrick Mahomes',sport:'nfl',espnId:'3139477',pos:'QB',team:'Kansas City Chiefs',seen:2},
+      {id:'fxp3',name:'LeBron James',sport:'nba',espnId:'1966',pos:'SF',team:'Los Angeles Lakers',seen:4},
+      {id:'fxp4',name:'Connor McDavid',sport:'nhl',espnId:'3895074',pos:'C',team:'Edmonton Oilers',seen:1},
+      {id:'fxp5',name:'Aaron Judge',sport:'mlb',espnId:'33192',pos:'RF',team:'New York Yankees',seen:2},
+      {id:'fxp6',name:'Nikola Jokic',sport:'nba',espnId:'3112335',pos:'C',team:'Denver Nuggets',seen:1}
+    ];
+    grid.innerHTML = '<div class="vault-empty"><div class="faux"><div class="roster">'+fauxPlayers.map(rosterCardHtml).join('')+'</div></div>'
+      + '<div class="vault-empty-overlay"><div class="vault-empty-title">your roster awaits</div>'
+      + '<div class="vault-empty-sub">Every athlete you watch in person joins your collection \u2014 added automatically from box scores when you log a game.</div>'
+      + '<button class="vault-empty-btn" onclick="openSchedModal()">+ log your first game</button></div></div>';
     return;
   }
 
@@ -4695,7 +4707,27 @@ function renderRecords() {
 
   var content = document.getElementById('rec-content');
   if (!content) return;
-  if (total === 0) { content.innerHTML = ''; return; }
+  if (total === 0) {
+    if (eEl) eEl.style.display = 'none';   // the overlay replaces the plain hint
+    // Faux blurred record layout behind an inspirational overlay (teaser for new users).
+    function fauxRecRow(logo, name, w, l) {
+      var p = Math.round(w/(w+l)*100);
+      return '<div class="rrow"><img src="'+logo+'" alt="" onerror="this.style.visibility=\'hidden\'"><span class="rrow-name">'+name+'</span>'
+        + '<span class="rrow-bar"><i style="width:'+p+'%"></i></span>'
+        + '<span class="rrow-wl">'+w+'–'+l+'</span><span class="rrow-pct">'+p+'%</span></div>';
+    }
+    var fauxRecords = '<div class="lbl" style="margin-top:18px;">Overall</div>'
+      + '<div class="rec-overall-bar"><i style="width:64%"></i></div>'
+      + '<div class="lbl" style="margin-top:18px;">Your teams</div>'
+      + fauxRecRow('https://a.espncdn.com/i/teamlogos/mlb/500/lad.png','Los Angeles Dodgers',18,9)
+      + fauxRecRow('https://a.espncdn.com/i/teamlogos/nfl/500/kc.png','Kansas City Chiefs',7,4)
+      + fauxRecRow('https://a.espncdn.com/i/teamlogos/nba/500/bos.png','Boston Celtics',12,6);
+    content.innerHTML = '<div class="vault-empty"><div class="faux">'+fauxRecords+'</div>'
+      + '<div class="vault-empty-overlay"><div class="vault-empty-title">your record awaits</div>'
+      + '<div class="vault-empty-sub">Every game you attend builds your lifetime win-loss story — by team, by league, by season.</div>'
+      + '<button class="vault-empty-btn" onclick="openSchedModal()">+ log your first game</button></div></div>';
+    return;
+  }
 
   // A unified record row: logo, name, win-rate bar, W–L, pct.
   function recRow(logo, name, w, l) {
@@ -4796,7 +4828,20 @@ function renderVenues() {
 
   // ── Visited ──
   if (visitedPins.length === 0) {
-    grid.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0;">No venues visited yet — log a game to mark a stadium.</div>';
+    // Faux blurred venue cards behind an inspirational overlay (teaser for new users).
+    var fauxVenues = [
+      {venue:'Dodger Stadium',team:'Los Angeles Dodgers',league:'MLB',logo:'https://a.espncdn.com/i/teamlogos/mlb/500/lad.png',n:3},
+      {venue:'Arrowhead Stadium',team:'Kansas City Chiefs',league:'NFL',logo:'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png',n:2},
+      {venue:'Fenway Park',team:'Boston Red Sox',league:'MLB',logo:'https://a.espncdn.com/i/teamlogos/mlb/500/bos.png',n:1},
+      {venue:'TD Garden',team:'Boston Celtics',league:'NBA',logo:'https://a.espncdn.com/i/teamlogos/nba/500/bos.png',n:1}
+    ];
+    var fauxCards = fauxVenues.map(function(v){
+      return '<div class="vcard vis"><img src="'+v.logo+'" width="26" height="26" style="object-fit:contain;flex-shrink:0;margin-top:2px" alt="" onerror="this.style.visibility=\'hidden\'"><div class="vi"><div class="vn">'+v.venue+'</div><div class="vt">'+v.team+' · '+v.league+'</div><span class="vb vbv">✓ Visited · '+v.n+' game'+(v.n!==1?'s':'')+'</span></div></div>';
+    }).join('');
+    grid.innerHTML = '<div class="vault-empty" style="grid-column:1/-1;"><div class="faux"><div class="vgrid">'+fauxCards+'</div></div>'
+      + '<div class="vault-empty-overlay"><div class="vault-empty-title">your stadium quest awaits</div>'
+      + '<div class="vault-empty-sub">Every venue you visit gets pinned to the map and added to your collection. Start checking them off.</div>'
+      + '<button class="vault-empty-btn" onclick="openSchedModal()">+ log your first game</button></div></div>';
   } else {
     grid.innerHTML = visitedPins.map(function(p){
       var pinId=p[0], league=p[3], venue=p[5], teamName=p[6], logo=p[7];
