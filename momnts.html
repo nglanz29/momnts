@@ -466,6 +466,12 @@ textarea.mi{resize:none;height:68px;}
 .thub-ven{font-family:var(--font-ui);font-size:11px;color:var(--text2);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 12px;}
 .thub-foot{margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
 .thub-link{font-family:var(--font-ui);font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;}
+.thub-lead{display:grid;grid-template-columns:repeat(2,1fr);gap:7px 16px;}
+.thub-lead-row{display:flex;align-items:baseline;gap:7px;font-family:var(--font-ui);font-size:11px;min-width:0;}
+.thub-lead-row .lab{color:var(--text3);font-size:9px;letter-spacing:.5px;min-width:58px;flex-shrink:0;}
+.thub-lead-row .who{color:var(--text);font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.thub-lead-row .val{color:var(--accent);font-weight:700;white-space:nowrap;flex-shrink:0;}
+@media (max-width:560px){.thub-lead{grid-template-columns:1fr;}}
 .addteam-toggle{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 16px;color:var(--text2);font-family:var(--font-ui);font-size:13px;font-weight:600;cursor:pointer;}
 @media (max-width:560px){.thub-stats{grid-template-columns:repeat(2,1fr);}}
 .frm{color:var(--text3);cursor:pointer;font-size:16px;line-height:1;margin-left:3px;}
@@ -4781,6 +4787,48 @@ function toggleAddTeam() {
 function thubStat(lab, val) {
   return '<div class="thub-stat"><div class="k">'+lab+'</div><div class="v">'+val+'</div></div>';
 }
+// Per-league stat leaders for a team's seen-live players (top 1 per category).
+var HUB_LEAD_DEFS = {
+  nfl: [
+    { lab:'PASS YDS', val:function(t){return t.passYds||0;}, disp:function(v){return v+' yds';} },
+    { lab:'PASS TD',  val:function(t){return t.passTDs||0;}, disp:function(v){return v+' TD';} },
+    { lab:'RUSH YDS', val:function(t){return t.rushYds||0;}, disp:function(v){return v+' yds';} },
+    { lab:'RUSH TD',  val:function(t){return t.rushTDs||0;}, disp:function(v){return v+' TD';} },
+    { lab:'REC YDS',  val:function(t){return t.recYds||0;}, disp:function(v){return v+' yds';} },
+    { lab:'REC TD',   val:function(t){return t.recTDs||0;}, disp:function(v){return v+' TD';} }
+  ],
+  nba: [
+    { lab:'POINTS',   val:function(t){return t.pts||0;}, disp:function(v){return ''+v;} },
+    { lab:'REBOUNDS', val:function(t){return t.reb||0;}, disp:function(v){return ''+v;} },
+    { lab:'ASSISTS',  val:function(t){return t.ast||0;}, disp:function(v){return ''+v;} }
+  ],
+  mlb: [
+    { lab:'HOME RUNS', val:function(t){return t.hr||0;}, disp:function(v){return ''+v;} },
+    { lab:'RBI',       val:function(t){return t.rbi||0;}, disp:function(v){return ''+v;} },
+    { lab:'ERA', asc:true, ok:function(t){return t.ip>=1;}, val:function(t){return t.ip>0?(t.er/t.ip*9):0;}, disp:function(v){return v.toFixed(2);} }
+  ],
+  nhl: [
+    { lab:'POINTS',  val:function(t){return (t.goals||0)+(t.assists||0);}, disp:function(v){return ''+v;} },
+    { lab:'GOALS',   val:function(t){return t.goals||0;}, disp:function(v){return ''+v;} },
+    { lab:'ASSISTS', val:function(t){return t.assists||0;}, disp:function(v){return ''+v;} }
+  ]
+};
+function hubLeaders(sport, players) {
+  var defs = HUB_LEAD_DEFS[sport] || [];
+  var enriched = players.map(function(p){ return { p:p, t:aggregateStats(sport, p.games)||{} }; });
+  var out = [];
+  defs.forEach(function(d){
+    var rows = enriched
+      .map(function(e){ return { p:e.p, v:d.val(e.t), ok: d.ok ? d.ok(e.t) : (d.val(e.t) > 0) }; })
+      .filter(function(r){ return r.ok; });
+    if (!rows.length) return;
+    rows.sort(d.asc ? function(a,b){ return a.v - b.v; } : function(a,b){ return b.v - a.v; });
+    var top = rows[0];
+    out.push({ lab:d.lab, who:(top.p.name||'').split(' ').slice(-1)[0], val:d.disp(top.v) });
+  });
+  return out;
+}
+
 function teamHubHTML(t, league, canon) {
   var full = t.city + ' ' + t.name;
   function isT(n){ return n && (n === full || n.indexOf(t.name) > -1); }
@@ -4794,12 +4842,17 @@ function teamHubHTML(t, league, canon) {
     if (ts>os) w++; else if (ts<os) l++;
   });
   var pct = (w+l)>0 ? Math.round(w/(w+l)*100) : 0;
-  // Players seen from this team, collected from the games' box-score players
+  // Players seen from this team, aggregated across the games' box-score lines
   var pmap = {};
   inv.forEach(function(g){ (g.players||[]).forEach(function(p){
-    if (p.team && p.team.toLowerCase().indexOf(t.name.toLowerCase()) > -1) pmap[p.espnId||p.name] = p;
+    if (p.team && p.team.toLowerCase().indexOf(t.name.toLowerCase()) > -1) {
+      var key = p.espnId || p.name;
+      if (!pmap[key]) pmap[key] = { name:p.name, sport:p.sport, espnId:p.espnId, pos:p.pos, games:[] };
+      pmap[key].games.push({ stats:p.stats, group:p.group });
+    }
   }); });
   var players = Object.keys(pmap).map(function(k){ return pmap[k]; });
+  var leaders = hubLeaders((league||'').toLowerCase(), players);
   // Distinct venues seen them at (strip trailing city)
   var vmap = {};
   inv.forEach(function(g){ if (g.venue) { var v = g.venue.split(',')[0].trim(); if (v) vmap[v] = 1; } });
@@ -4829,6 +4882,7 @@ function teamHubHTML(t, league, canon) {
     + '<div class="thub-body">'
       + '<div class="thub-stats">'+thubStat('GAMES',inv.length)+thubStat('RECORD',w+'–'+l)+thubStat('PLAYERS SEEN',players.length)+thubStat('VENUES',venues.length)+'</div>'
       + (players.length ? '<div class="thub-lbl">PLAYERS SEEN LIVE</div><div class="thub-players">'+pRow+'</div>' : '')
+      + (leaders.length ? '<div class="thub-lbl">SEEN-LIVE LEADERS</div><div class="thub-lead">'+leaders.map(function(L){ return '<div class="thub-lead-row"><span class="lab">'+L.lab+'</span><span class="who">'+escMomnt(L.who)+'</span><span class="val">'+L.val+'</span></div>'; }).join('')+'</div>' : '')
       + (venues.length ? '<div class="thub-lbl">SEEN THEM AT</div><div class="thub-venues">'+venChips+'</div>' : '')
       + (inv.length ? '<div class="thub-foot"><span class="thub-link" onclick="go(\'log\',null);setTimeout(function(){var s=document.getElementById(\'gl-search\');if(s){s.value=\''+searchTerm+'\';renderGameLog();}},120)">view '+inv.length+' game'+(inv.length!==1?'s':'')+' →</span></div>' : '')
     + '</div></div>';
