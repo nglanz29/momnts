@@ -165,6 +165,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 /* ── momnts Vault (premium holographic cards) ── */
 .momnt-stats{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px;}
 .momnt-stat{font-family:var(--font-ui);font-size:11px;font-weight:700;padding:5px 11px;border-radius:20px;letter-spacing:.4px;}
+/* Collection-dashboard header: total + per-rarity tiles */
+.momnt-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px;margin-bottom:20px;}
+.mtier{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:13px 10px 11px;text-align:center;position:relative;overflow:hidden;}
+.mtier::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--c);opacity:.9;}
+.mtier-n{font-family:var(--font-display);font-size:25px;font-weight:800;color:var(--c);line-height:1;}
+.mtier.zero .mtier-n{color:var(--text3);opacity:.45;}
+.mtier-l{font-size:9.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-top:6px;font-weight:700;}
 .momnt-filters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px;}
 .mfilt{font-family:var(--font-ui);font-size:10.5px;font-weight:700;letter-spacing:.6px;padding:5px 12px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);cursor:pointer;}
 .mfilt.on{background:var(--accent);border-color:var(--accent);color:#0D0E10;}
@@ -890,7 +897,7 @@ textarea.mi{resize:none;height:68px;}
 <!-- MOMENTS -->
 <div id="moments" class="pg">
   <div class="ph"><div class="pt">momnts<span class="info-i" tabindex="0">i<span class="info-pop">A momnt is something historic, rare, or unforgettable you saw in person — a no-hitter, a walk-off, a playoff clincher, a record night. Some are detected automatically when you log a game; tag the rest yourself. Each one earns a rarity tier.</span></span></div><div class="ps">the historic, the rare, the unforgettable — you were there.</div></div>
-  <button class="abtn" onclick="openMomentModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>log a moment</button>
+  <button class="abtn" onclick="openMomentModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>log a momnt</button>
   <div id="moments-list">
     <div style="color:var(--text3);font-size:13px;padding:16px 0;">No momnts logged yet. Hit "Log a momnt" above to add one.</div>
   </div>
@@ -3537,9 +3544,17 @@ function renderMoments() {
 
   var counts = { legendary:0, epic:0, rare:0, notable:0 };
   savedMoments.forEach(function(m){ var t = momntMeta(m).tier; counts[t] = (counts[t]||0)+1; });
-  function statChip(tierKey, n){ if(!n) return ''; var t = MOMNT_TIERS[tierKey]; return '<span class="momnt-stat" style="background:'+t.bg+';color:'+t.color+'">'+n+' '+t.label+'</span>'; }
-  var stats = '<div class="momnt-stats">'+statChip('legendary',counts.legendary)+statChip('epic',counts.epic)+statChip('rare',counts.rare)+statChip('notable',counts.notable)
-    + '<span class="momnt-stat" style="background:var(--bg3);color:var(--text2)">'+savedMoments.length+' total</span></div>';
+  // Collection-dashboard header: a total tile + one tile per rarity tier.
+  var tierTiles = [
+    { n: savedMoments.length, c: 'var(--signal)', l: 'Collected' },
+    { n: counts.legendary, c: MOMNT_TIERS.legendary.color, l: 'Legendary' },
+    { n: counts.epic, c: MOMNT_TIERS.epic.color, l: 'Epic' },
+    { n: counts.rare, c: MOMNT_TIERS.rare.color, l: 'Rare' },
+    { n: counts.notable, c: MOMNT_TIERS.notable.color, l: 'Notable' }
+  ];
+  var stats = '<div class="momnt-hero">'+tierTiles.map(function(t){
+    return '<div class="mtier'+(t.n===0?' zero':'')+'" style="--c:'+t.c+'"><div class="mtier-n">'+t.n+'</div><div class="mtier-l">'+t.l+'</div></div>';
+  }).join('')+'</div>';
 
   var pinned = savedMoments.filter(function(m){ return m.pinned; }).slice(0,4);
   var pinnedHTML = pinned.length ? '<div class="lbl" style="margin-top:16px;">Pinned</div><div class="pinned-row">'+pinned.map(momntCardHTML).join('')+'</div>' : '';
@@ -3551,7 +3566,7 @@ function renderMoments() {
   }).join('')+'</div>';
 
   var list = momntFilter==='all' ? savedMoments : savedMoments.filter(function(m){ return momntMeta(m).tier === momntFilter; });
-  var vault = '<div class="lbl" style="margin-top:18px;">The Vault</div>'+filters
+  var vault = '<div class="lbl" style="margin-top:18px;">The Vault · '+savedMoments.length+'</div>'+filters
     + (list.length ? '<div class="vault-grid">'+list.map(momntCardHTML).join('')+'</div>'
                    : '<div style="color:var(--text3);font-size:12px;padding:8px 0;">No '+momntFilter+' momnts yet.</div>');
 
