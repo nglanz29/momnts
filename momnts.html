@@ -259,6 +259,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .lead-val small{font-size:9px;color:var(--text3);font-family:var(--font-ui);font-weight:500;margin-left:2px;}
 .lead-empty{font-size:11.5px;color:var(--text3);padding:4px 0;}
 /* Direction A — compact roster strip */
+.posfilt-row{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px;}
+.posfilt{font-family:var(--font-ui);font-size:10.5px;font-weight:700;letter-spacing:.5px;padding:4px 11px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);cursor:pointer;}
+.posfilt.on{background:var(--accent);border-color:var(--accent);color:#0D0E10;}
+.pl-pos-hdr{font-family:var(--font-ui);font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text2);margin:16px 0 8px;text-transform:uppercase;}
+.pl-pos-hdr span{color:var(--text3);font-weight:400;margin-left:5px;}
 .roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:9px;}
 .rost-card{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;transition:border-color .15s;cursor:pointer;position:relative;}
 .rost-card:hover{border-color:var(--border2);}
@@ -2430,6 +2435,9 @@ var LEAGUE_META = {
   nhl: { label:'NHL', logo:'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png' }
 };
 
+var playerPosFilter = {};
+function setPosFilter(lg, pos) { playerPosFilter[lg] = pos; renderPlayers(); }
+
 function renderPlayers() {
   const grid = document.getElementById('players-grid');
   if (!grid) return;
@@ -2487,15 +2495,35 @@ function renderPlayers() {
       html += '</div>';
     }
 
-    // Full roster strip (everyone in the league), sorted: favorites, then most-seen, then name
+    // Full roster, sorted: favorites, then most-seen, then name
     var roster = players.slice().sort(function(a,b){
       if (a.fav && !b.fav) return -1;
       if (b.fav && !a.fav) return 1;
       if ((b.seen||0) !== (a.seen||0)) return (b.seen||0) - (a.seen||0);
       return a.name.localeCompare(b.name);
     });
+    // Positions present, ordered by sport priority
+    var posList = [];
+    roster.forEach(function(p){ var po = p.pos || '—'; if (posList.indexOf(po) === -1) posList.push(po); });
+    posList.sort(function(a,b){ var d = posPriority(lg,a) - posPriority(lg,b); return d !== 0 ? d : a.localeCompare(b); });
+    var sel = playerPosFilter[lg] || 'all';
+    if (sel !== 'all' && posList.indexOf(sel) === -1) sel = 'all';
+
     html += '<div class="pl-sub-hdr">all '+meta.label+' players seen</div>';
-    html += '<div class="roster">'+roster.map(rosterCardHtml).join('')+'</div>';
+    html += '<div class="posfilt-row"><span class="posfilt'+(sel==='all'?' on':'')+'" onclick="setPosFilter(\''+lg+'\',\'all\')">ALL</span>'
+      + posList.map(function(po){ return '<span class="posfilt'+(sel===po?' on':'')+'" onclick="setPosFilter(\''+lg+'\',\''+po+'\')">'+po+'</span>'; }).join('')
+      + '</div>';
+
+    if (sel === 'all') {
+      posList.forEach(function(po){
+        var group = roster.filter(function(p){ return (p.pos||'—') === po; });
+        html += '<div class="pl-pos-hdr">'+po+' <span>'+group.length+'</span></div>';
+        html += '<div class="roster">'+group.map(rosterCardHtml).join('')+'</div>';
+      });
+    } else {
+      var group = roster.filter(function(p){ return (p.pos||'—') === sel; });
+      html += '<div class="roster">'+group.map(rosterCardHtml).join('')+'</div>';
+    }
   });
 
   grid.innerHTML = html || '<div style="color:var(--text3);font-size:13px;padding:16px 0;">No players in this category yet.</div>';
