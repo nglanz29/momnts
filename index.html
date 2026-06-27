@@ -535,7 +535,7 @@ textarea.mi{resize:none;height:68px;}
 
 /* ONBOARDING */
 #onboarding{position:fixed;inset:0;z-index:8000;background:var(--ink);display:flex;align-items:center;justify-content:center;overflow-y:auto;}
-#ob-box{width:540px;max-width:94vw;padding:40px 36px;}
+#ob-box{width:540px;max-width:94vw;padding:40px 36px;position:relative;z-index:2;}
 #ob-logo{display:flex;align-items:center;justify-content:center;margin-bottom:36px;}
 .ob-step{display:none;}.ob-step.on{display:block;}
 .ob-title{font-family:var(--font-display);font-size:21px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px;}
@@ -546,6 +546,16 @@ textarea.mi{resize:none;height:68px;}
 .ob-btn:hover{background:#18935d;}
 .ob-skip{display:block;text-align:center;font-size:13px;color:var(--text3);margin-top:14px;cursor:pointer;}
 .ob-skip:hover{color:var(--text2);}
+/* Animated blurred card collage behind the onboarding form (slot-machine reels) */
+#ob-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;display:flex;justify-content:center;gap:22px;filter:blur(5.5px) saturate(.9);opacity:.42;}
+.ob-reel{flex:0 0 340px;}
+.ob-reel-inner{display:flex;flex-direction:column;gap:22px;will-change:transform;animation:ob-reel-up 90s linear infinite;}
+.ob-reel-inner.down{animation-name:ob-reel-down;}
+.ob-w{width:340px;}
+#ob-bg-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 62% 56% at center, rgba(13,14,16,.55) 0%, rgba(13,14,16,.82) 46%, rgba(13,14,16,.96) 100%);}
+@keyframes ob-reel-up{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+@keyframes ob-reel-down{from{transform:translateY(-50%)}to{transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.ob-reel-inner{animation:none;}}
 .ob-sport-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:20px 0 10px;display:flex;align-items:center;gap:7px;}
 .ob-sport-label img{width:16px;height:16px;object-fit:contain;}
 .ob-tgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:4px;}
@@ -5206,6 +5216,57 @@ function obToggleTeam(el, id) {
   else { obSelectedTeams.add(id); el.classList.add('on'); }
 }
 
+// Build the animated blurred card collage behind the onboarding form (runs once).
+function buildObBackground() {
+  var host = document.getElementById('onboarding');
+  if (!host || document.getElementById('ob-bg')) return;
+  var L = 'https://a.espncdn.com/i/teamlogos/';
+  var momnts = [
+    {id:'obm1',title:'AFC Championship clincher',category:'playoff',tier:'legendary',date:'2024-01-28',league:'NFL'},
+    {id:'obm2',title:'Verlander throws a no-hitter',category:'no-hitter',date:'2019-09-01',league:'MLB'},
+    {id:'obm3',title:'Walk-off in the 11th',category:'walk-off',date:'2022-07-04',league:'MLB'},
+    {id:'obm4',title:'Triple-double masterpiece',category:'feat',date:'2023-03-10',league:'NBA'},
+    {id:'obm5',title:'Overtime thriller',category:'overtime',date:'2021-05-02',league:'NHL'}
+  ];
+  var games = [
+    {id:'obg1',date:'2024-01-28',team:'Cincinnati Bengals',opponent:'Kansas City Chiefs',homeAway:'away',scoreUs:24,scoreThem:27,league:'NFL',venue:'Arrowhead Stadium',myTeamLogo:L+'nfl/500/cin.png',isPlayoff:true,playoffRound:'AFC Championship',momntNo:12},
+    {id:'obg2',date:'2023-08-19',team:'Los Angeles Dodgers',opponent:'San Francisco Giants',homeAway:'home',scoreUs:5,scoreThem:3,league:'MLB',venue:'Dodger Stadium',myTeamLogo:L+'mlb/500/lad.png',momntNo:8},
+    {id:'obg3',date:'2023-03-10',team:'Boston Celtics',opponent:'Los Angeles Lakers',homeAway:'home',scoreUs:114,scoreThem:108,league:'NBA',venue:'TD Garden',myTeamLogo:L+'nba/500/bos.png',momntNo:5}
+  ];
+  var players = [
+    {id:'obp1',name:'Shohei Ohtani',sport:'mlb',espnId:'39832',pos:'DH',team:'Los Angeles Dodgers',fav:true,seen:3},
+    {id:'obp2',name:'Patrick Mahomes',sport:'nfl',espnId:'3139477',pos:'QB',team:'Kansas City Chiefs',seen:2},
+    {id:'obp3',name:'LeBron James',sport:'nba',espnId:'1966',pos:'SF',team:'Los Angeles Lakers',seen:4},
+    {id:'obp4',name:'Connor McDavid',sport:'nhl',espnId:'3895074',pos:'C',team:'Edmonton Oilers',seen:1},
+    {id:'obp5',name:'Aaron Judge',sport:'mlb',espnId:'33192',pos:'RF',team:'New York Yankees',seen:2},
+    {id:'obp6',name:'Nikola Jokic',sport:'nba',espnId:'3112335',pos:'C',team:'Denver Nuggets',seen:1}
+  ];
+  // Uniform 340px-wide items mixing all three card types.
+  var items = [];
+  momnts.forEach(function(m){ items.push(momntCardHTML(m)); });
+  games.forEach(function(g){ items.push('<div class="ob-w">'+gameCardHtml(g)+'</div>'); });
+  players.forEach(function(p){ items.push('<div class="ob-w">'+rosterCardHtml(p)+'</div>'); });
+  // Shuffle so columns don't line up by type
+  for (var i=items.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=items[i]; items[i]=items[j]; items[j]=t; }
+
+  var durations=[82,96,110,88,104,120];
+  var bg=document.createElement('div'); bg.id='ob-bg';
+  for (var r=0;r<6;r++){
+    var slice='';
+    for (var k=0;k<5;k++){ slice += items[(r*3+k)%items.length]; }
+    var reel=document.createElement('div'); reel.className='ob-reel';
+    var rin=document.createElement('div');
+    rin.className='ob-reel-inner'+(r%2 ? ' down':'');
+    rin.style.animationDuration=durations[r]+'s';
+    rin.style.animationDelay=(-r*7)+'s';
+    rin.innerHTML=slice+slice;   // duplicate the set for a seamless loop
+    reel.appendChild(rin); bg.appendChild(reel);
+  }
+  var scrim=document.createElement('div'); scrim.id='ob-bg-scrim';
+  host.insertBefore(scrim, host.firstChild);
+  host.insertBefore(bg, host.firstChild);
+}
+
 function obNext() {
   const nameEl = document.getElementById('ob-name');
   const name = nameEl.value.trim();
@@ -5324,6 +5385,7 @@ function closeNav() {
     // First run or name never set — show onboarding from step 1
     document.getElementById('ob-step-0').classList.add('on');
     document.getElementById('ob-step-1').classList.remove('on');
+    buildObBackground();
     document.getElementById('onboarding').style.display = 'flex';
   } else {
     // Returning user
