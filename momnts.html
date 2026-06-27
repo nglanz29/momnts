@@ -466,11 +466,13 @@ textarea.mi{resize:none;height:68px;}
 .thub-ven{font-family:var(--font-ui);font-size:11px;color:var(--text2);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 12px;}
 .thub-foot{margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
 .thub-link{font-family:var(--font-ui);font-size:11px;font-weight:700;color:var(--accent);cursor:pointer;}
-.thub-lead{display:grid;grid-template-columns:repeat(2,1fr);gap:7px 16px;}
-.thub-lead-row{display:flex;align-items:baseline;gap:7px;font-family:var(--font-ui);font-size:11px;min-width:0;}
-.thub-lead-row .lab{color:var(--text3);font-size:9px;letter-spacing:.5px;min-width:58px;flex-shrink:0;}
-.thub-lead-row .who{color:var(--text);font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.thub-lead-row .val{color:var(--accent);font-weight:700;white-space:nowrap;flex-shrink:0;}
+.thub-lead{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;}
+.thub-lcard{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;}
+.thub-lav{width:34px;height:34px;border-radius:50%;background:#23262a center/cover no-repeat;border:1px solid #3a3f44;flex-shrink:0;}
+.thub-lmeta{min-width:0;flex:1;}
+.thub-llab{font-family:var(--font-ui);font-size:9px;letter-spacing:.6px;color:var(--text3);}
+.thub-lname{font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.thub-lval{color:var(--accent);font-weight:700;margin-left:6px;}
 @media (max-width:560px){.thub-lead{grid-template-columns:1fr;}}
 .addteam-toggle{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 16px;color:var(--text2);font-family:var(--font-ui);font-size:13px;font-weight:600;cursor:pointer;}
 @media (max-width:560px){.thub-stats{grid-template-columns:repeat(2,1fr);}}
@@ -647,9 +649,7 @@ textarea.mi{resize:none;height:68px;}
   <button class="ni" onclick="go('records',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>my records</button>
   <button class="ni" onclick="go('players',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>players seen</button>
   <button class="ni" onclick="go('moments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>momnts</button>
-  <div class="snl" style="margin-top:6px;">my teams</div>
-  <div id="favnav"></div>
-  <button class="ni" onclick="go('myteams',this)" style="color:var(--accent);margin-top:2px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>manage teams</button>
+  <button class="ni" onclick="go('myteams',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>my teams</button>
   <div class="sbottom">
     <div class="avatar" id="sb-avatar">?</div>
     <div style="flex:1"><div style="font-size:13px;font-weight:600;" id="sb-name">You</div><div style="font-size:11px;color:var(--text3);" id="sb-gamecount">0 games</div></div>
@@ -872,10 +872,11 @@ textarea.mi{resize:none;height:68px;}
 
 <!-- MY TEAMS -->
 <div id="myteams" class="pg">
-  <div class="ph"><div class="pt">my teams</div><div class="ps">pick your favorites — they appear in your sidebar.</div></div>
-  <div class="lbl">Your favorites</div>
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+    <div><div class="pt">my teams</div><div class="ps">your favorites — record, players seen, and venues for each.</div></div>
+    <button class="abtn" id="addteam-toggle" onclick="toggleAddTeam()" style="flex-shrink:0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>manage teams</button>
+  </div>
   <div id="team-hubs"></div>
-  <button class="addteam-toggle" id="addteam-toggle" onclick="toggleAddTeam()">+ add a team</button>
   <div id="addteam-panel" style="display:none;margin-top:14px;">
     <div class="tsect"><div class="thdr"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png">MLB</div><div class="tgrid" id="gmlb"></div></div>
     <div class="tsect"><div class="thdr"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png">NFL</div><div class="tgrid" id="gnfl"></div></div>
@@ -4778,11 +4779,9 @@ function renderTeams() {
 
 function toggleAddTeam() {
   var p = document.getElementById('addteam-panel');
-  var b = document.getElementById('addteam-toggle');
   if (!p) return;
   var open = p.style.display === 'none' || !p.style.display;
   p.style.display = open ? 'block' : 'none';
-  if (b) b.textContent = open ? '− done adding' : '+ add a team';
 }
 function thubStat(lab, val) {
   return '<div class="thub-stat"><div class="k">'+lab+'</div><div class="v">'+val+'</div></div>';
@@ -4824,7 +4823,7 @@ function hubLeaders(sport, players) {
     if (!rows.length) return;
     rows.sort(d.asc ? function(a,b){ return a.v - b.v; } : function(a,b){ return b.v - a.v; });
     var top = rows[0];
-    out.push({ lab:d.lab, who:(top.p.name||'').split(' ').slice(-1)[0], val:d.disp(top.v) });
+    out.push({ lab:d.lab, who:(top.p.name||'').split(' ').slice(-1)[0], val:d.disp(top.v), espnId:top.p.espnId, sport:top.p.sport });
   });
   return out;
 }
@@ -4881,8 +4880,9 @@ function teamHubHTML(t, league, canon) {
     + '</div>'
     + '<div class="thub-body">'
       + '<div class="thub-stats">'+thubStat('GAMES',inv.length)+thubStat('RECORD',w+'–'+l)+thubStat('PLAYERS SEEN',players.length)+thubStat('VENUES',venues.length)+'</div>'
-      + (players.length ? '<div class="thub-lbl">PLAYERS SEEN LIVE</div><div class="thub-players">'+pRow+'</div>' : '')
-      + (leaders.length ? '<div class="thub-lbl">SEEN-LIVE LEADERS</div><div class="thub-lead">'+leaders.map(function(L){ return '<div class="thub-lead-row"><span class="lab">'+L.lab+'</span><span class="who">'+escMomnt(L.who)+'</span><span class="val">'+L.val+'</span></div>'; }).join('')+'</div>' : '')
+      + (leaders.length
+          ? '<div class="thub-lbl">PLAYERS SEEN LIVE</div><div class="thub-lead">'+leaders.map(function(L){ var shot=(L.espnId&&L.sport)?espnShot(L.sport,L.espnId):''; var av=shot?'<div class="thub-lav" style="background-image:url(\''+shot+'\')"></div>':'<div class="thub-lav"></div>'; return '<div class="thub-lcard">'+av+'<div class="thub-lmeta"><div class="thub-llab">'+L.lab+'</div><div class="thub-lname">'+escMomnt(L.who)+'<span class="thub-lval">'+L.val+'</span></div></div></div>'; }).join('')+'</div>'
+          : (players.length ? '<div class="thub-lbl">PLAYERS SEEN LIVE</div><div class="thub-players">'+pRow+'</div>' : ''))
       + (venues.length ? '<div class="thub-lbl">SEEN THEM AT</div><div class="thub-venues">'+venChips+'</div>' : '')
       + (inv.length ? '<div class="thub-foot"><span class="thub-link" onclick="go(\'log\',null);setTimeout(function(){var s=document.getElementById(\'gl-search\');if(s){s.value=\''+searchTerm+'\';renderGameLog();}},120)">view '+inv.length+' game'+(inv.length!==1?'s':'')+' →</span></div>' : '')
     + '</div></div>';
@@ -4982,9 +4982,9 @@ function importData(e) {
 }
 
 function renderFavNav() {
-  const all=[...TEAMS.mlb,...TEAMS.nfl,...TEAMS.nba,...TEAMS.nhl];
-  document.getElementById('favnav').innerHTML=all.filter(t=>favs.has(t.id))
-    .map(t=>`<button class="ni" onclick="go('myteams',this)"><img src="${t.logo}" style="width:16px;height:16px;object-fit:contain;opacity:.7;">${t.city} ${t.name}</button>`).join('');
+  // Favorite teams no longer appear individually in the sidebar (single "my teams" tab).
+  var el = document.getElementById('favnav');
+  if (!el) return;
 }
 
 function toggleCard(el) {
