@@ -563,6 +563,8 @@ textarea.mi{resize:none;height:68px;}
 @keyframes ob-reel-up{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 @keyframes ob-reel-down{from{transform:translateY(-50%)}to{transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.ob-reel-inner{animation:none;}}
+/* On phones only ~1 reel is visible — drop the rest so we don't animate/blur heavy cards offscreen */
+@media (max-width:560px){#ob-bg{gap:14px;}.ob-reel:nth-child(n+4){display:none;}}
 .ob-sport-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:20px 0 10px;display:flex;align-items:center;gap:7px;}
 .ob-sport-label img{width:16px;height:16px;object-fit:contain;}
 .ob-tgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:4px;}
