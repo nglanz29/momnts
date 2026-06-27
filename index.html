@@ -3190,7 +3190,7 @@ function renderGameLog() {
       {id:'fxg2',date:'2023-08-19',team:'Los Angeles Dodgers',opponent:'San Francisco Giants',homeAway:'home',scoreUs:5,scoreThem:3,league:'MLB',venue:'Dodger Stadium',myTeamLogo:'https://a.espncdn.com/i/teamlogos/mlb/500/lad.png',momntNo:8},
       {id:'fxg3',date:'2023-03-10',team:'Boston Celtics',opponent:'Los Angeles Lakers',homeAway:'home',scoreUs:114,scoreThem:108,league:'NBA',venue:'TD Garden',myTeamLogo:'https://a.espncdn.com/i/teamlogos/nba/500/bos.png',momntNo:5}
     ];
-    list.innerHTML = '<div class="vault-empty"><div class="faux"><div class="gl">'+fauxGames.map(ticketHtml).join('')+'</div></div>'
+    list.innerHTML = '<div class="vault-empty"><div class="faux"><div class="gl">'+fauxGames.map(gameCardHtml).join('')+'</div></div>'
       + '<div class="vault-empty-overlay"><div class="vault-empty-title">your game log awaits</div>'
       + '<div class="vault-empty-sub">Every game you attend becomes a commemorative ticket stub — the matchup, the score, the seat. Start your collection.</div>'
       + '<button class="vault-empty-btn" onclick="openSchedModal()">+ log your first game</button></div></div>';
