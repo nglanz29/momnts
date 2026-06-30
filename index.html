@@ -40,8 +40,8 @@ a{color:inherit}
 .hero-reel-inner.down{animation-name:heroDown}
 @keyframes heroUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 @keyframes heroDown{from{transform:translateY(-50%)}to{transform:translateY(0)}}
-.hero-fade-b{position:absolute;left:0;right:0;bottom:0;height:170px;background:linear-gradient(transparent,#0D0E10);z-index:1;pointer-events:none}
-.hero-fade-t{position:absolute;left:0;right:0;top:0;height:130px;background:linear-gradient(#0D0E10,transparent);z-index:1;pointer-events:none}
+.hero-fade-b{position:absolute;left:calc(-50vw + 50%);width:100vw;bottom:0;height:200px;background:linear-gradient(transparent,#0D0E10);z-index:1;pointer-events:none}
+.hero-fade-t{position:absolute;left:calc(-50vw + 50%);width:100vw;top:0;height:150px;background:linear-gradient(#0D0E10,transparent);z-index:1;pointer-events:none}
 @media (prefers-reduced-motion:reduce){.hero-reel-inner{animation:none}}
 @media (max-width:860px){
   .nav-links .navlink{display:none}
