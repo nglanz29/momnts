@@ -200,9 +200,9 @@ a{color:inherit}
 <script>
 function teamLogo(lg,ab){return 'https://a.espncdn.com/i/teamlogos/'+lg+'/500/'+ab+'.png';}
 function lum(hex){var c=hex.replace('#','');var r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16);return (0.299*r+0.587*g+0.114*b)/255;}
-// Use the team color as the logo-chip background, but lighten dark colors (e.g. navy)
-// toward white so a same-colored logo stays legible.
-function chipBg(hex){if(lum(hex)>=0.42)return hex;var c=hex.replace('#','');var r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16),f=0.8;return 'rgb('+Math.round(r+(255-r)*f)+','+Math.round(g+(255-g)*f)+','+Math.round(b+(255-b)*f)+')';}
+// Logo-chip background: keep the team's secondary color only when it's a bright
+// tone that reads well (e.g. golds); for reds/navy/black, use clean white instead.
+function chipBg(hex){return lum(hex)>=0.55?hex:'#ffffff';}
 function leagueLogo(l){return 'https://a.espncdn.com/i/teamlogos/leagues/500/'+l+'.png';}
 function headshot(sp,id){return 'https://a.espncdn.com/i/headshots/'+sp+'/players/full/'+id+'.png';}
 function ticketStub(p){
