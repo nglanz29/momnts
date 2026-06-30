@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   /* Momnts brand system v1.0 */
@@ -627,9 +628,40 @@ textarea.mi{resize:none;height:68px;}
 .sp-w{background:var(--win);color:var(--win-text);}
 .sp-l{background:var(--loss);color:var(--loss-text);}
 .sp-future{background:var(--bg4);color:var(--text3);}
+
+/* AUTH GATE (login / signup) */
+#auth-gate{position:fixed;inset:0;z-index:9000;background:var(--ink);display:flex;align-items:center;justify-content:center;overflow-y:auto;}
+#auth-gate.hidden{display:none;}
+#auth-box{width:400px;max-width:94vw;padding:40px 36px;position:relative;z-index:2;}
+#auth-logo{display:flex;align-items:center;justify-content:center;margin-bottom:30px;}
+.auth-tabs{display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:18px;}
+.auth-tab{flex:1;background:none;border:none;border-radius:7px;padding:9px;color:var(--text3);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;}
+.auth-tab.on{background:var(--accent);color:#fff;}
+.auth-msg{font-size:13px;line-height:1.5;margin:6px 2px 2px;min-height:18px;color:#ff6b6b;}
+.auth-msg.ok{color:var(--signal);}
+.auth-row{display:flex;gap:10px;}
+.auth-row .ob-input{flex:1;min-width:0;}
 </style>
 </head>
 <body>
+
+<!-- AUTH GATE (login / signup) -->
+<div id="auth-gate">
+  <div id="auth-box">
+    <div id="auth-logo"><img id="auth-logo-img" alt="momnts" style="height:48px;width:auto;display:block;"></div>
+    <div class="ob-title" id="auth-title">log in to momnts</div>
+    <div class="ob-sub" id="auth-sub">Your games, stadiums, players, and momnts — saved to your account and synced to every device.</div>
+    <div class="auth-tabs">
+      <button class="auth-tab on" id="auth-tab-login" type="button" onclick="setAuthMode('login')">Log in</button>
+      <button class="auth-tab" id="auth-tab-signup" type="button" onclick="setAuthMode('signup')">Sign up</button>
+    </div>
+    <input class="ob-input" id="auth-email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('auth-password').focus();}">
+    <input class="ob-input" id="auth-password" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter'){event.preventDefault();authSubmit();}">
+    <input class="ob-input" id="auth-password2" type="password" placeholder="Confirm password" autocomplete="new-password" style="display:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();authSubmit();}">
+    <div class="auth-msg" id="auth-msg"></div>
+    <button class="ob-btn" id="auth-submit" type="button" onclick="authSubmit()">Log in →</button>
+  </div>
+</div>
 
 <!-- ONBOARDING OVERLAY -->
 <div id="onboarding">
@@ -646,7 +678,11 @@ textarea.mi{resize:none;height:68px;}
     <div class="ob-step on" id="ob-step-0">
       <div class="ob-title">welcome to momnts. what should we call you?</div>
       <div class="ob-sub">Every game you've been to, kept like a ticket stub — the scores, the stadiums, the players you've seen live, and the momnts you'll never forget. Let's start your collection.</div>
-      <input class="ob-input" id="ob-name" type="text" placeholder="Your name" maxlength="32" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ob-username').focus();}">
+      <div class="auth-row">
+        <input class="ob-input" id="ob-first" type="text" placeholder="First name" maxlength="32" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ob-last').focus();}">
+        <input class="ob-input" id="ob-last" type="text" placeholder="Last name" maxlength="32" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ob-name').focus();}">
+      </div>
+      <input class="ob-input" id="ob-name" type="text" placeholder="Display name (shown on your profile)" maxlength="32" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ob-username').focus();}">
       <input class="ob-input" id="ob-username" type="text" placeholder="Username (e.g. @sportsfan)" maxlength="24" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();obNext();}">
       <button class="ob-btn" onclick="obNext()">Continue →</button>
     </div>
@@ -684,7 +720,7 @@ textarea.mi{resize:none;height:68px;}
   <div class="sbottom">
     <div class="avatar" id="sb-avatar">?</div>
     <div style="flex:1"><div style="font-size:13px;font-weight:600;" id="sb-name">You</div><div style="font-size:11px;color:var(--text3);" id="sb-gamecount">0 games</div></div>
-    <button onclick="resetApp()" title="Reset / sign out" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:4px;flex-shrink:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+    <button onclick="signOut()" title="Sign out" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:4px;flex-shrink:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
   </div>
 </nav>
 
@@ -5094,7 +5130,7 @@ function exportData() {
     _app: 'momnts',
     _version: 1,
     _exported: new Date().toISOString(),
-    user: { name: userName, handle: userHandle },
+    user: { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName },
     favs: [...favs],
     games: savedGames,
     visited: [...visitedStadiums],
@@ -5134,6 +5170,8 @@ function importData(e) {
     // Restore each piece, then persist and reload
     userName = (data.user && data.user.name) || userName;
     userHandle = (data.user && data.user.handle) || '';
+    userFirstName = (data.user && data.user.firstName) || '';
+    userLastName = (data.user && data.user.lastName) || '';
     favs = new Set(data.favs || []);
     savedGames = (data.games || []).filter(function(g){ return g && g.id && g.date; });
     savedGames.forEach(function(g){ canonicalGame(g); });
@@ -5142,7 +5180,7 @@ function importData(e) {
     checklistDone = data.checklist || [false,false,false,false,false];
     playerList = data.players || [];
     savedMoments = data.moments || [];
-    LS.save('user', { name: userName, handle: userHandle });
+    LS.save('user', { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName });
     LS.save('favs', [...favs]);
     LS.save('games', savedGames);
     LS.save('visited', [...visitedStadiums]);
@@ -5175,7 +5213,7 @@ const LS = {
 };
 
 function saveState() {
-  LS.save('user',    { name: userName, handle: userHandle });
+  LS.save('user',    { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName });
   LS.save('favs',    [...favs]);
   LS.save('games',   savedGames);
   LS.save('visited', [...visitedStadiums]);
@@ -5306,11 +5344,15 @@ function buildObBackground() {
 }
 
 function obNext() {
+  var first = document.getElementById('ob-first').value.trim();
+  var last = document.getElementById('ob-last').value.trim();
   const nameEl = document.getElementById('ob-name');
-  const name = nameEl.value.trim();
+  var name = nameEl.value.trim() || first;  // display name defaults to first name if left blank
   if (!name) { nameEl.focus(); nameEl.style.borderColor='var(--accent)'; return; }
+  userFirstName = first;
+  userLastName = last;
   userName = name;
-  // Username — default to a slug of the name if left blank
+  // Username — default to a slug of the display name if left blank
   var unameEl = document.getElementById('ob-username');
   var uname = unameEl.value.trim().replace(/^@+/, '');
   if (!uname) uname = name.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -5339,6 +5381,8 @@ function obFinish() {
 // ── USER STATE ────────────────────────────────────────────────────────
 let userName = '';
 let userHandle = '';
+let userFirstName = '';
+let userLastName = '';
 let savedGames = [];
 let savedMoments = [];
 let visitedStadiums = new Set();
@@ -5347,7 +5391,8 @@ let checklistDone = [false, false, false, false, false];
 
 function applyUser() {
   const name = userName || 'You';
-  const initials = name.slice(0,2).toUpperCase();
+  var initSrc = (userFirstName.charAt(0) || '') + (userLastName.charAt(0) || '');
+  const initials = (initSrc || name.slice(0,2)).toUpperCase();
   document.getElementById('sb-name').textContent = name;
   document.getElementById('sb-avatar').textContent = initials;
   document.getElementById('home-title').textContent = 'your dashboard';
@@ -5396,6 +5441,124 @@ function closeNav() {
   if (app) app.classList.remove('nav-open');
 }
 
+// ── AUTH (Supabase email + password) ──────────────────────────────────
+var SUPABASE_URL = 'https://ezselabyjixcnyavuwpi.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6c2VsYWJ5aml4Y255YXZ1d3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MDYxNDAsImV4cCI6MjA5ODM4MjE0MH0.f_ipGhIKJOcbRO6Hi8ECQ6oSEBE1Jq3UN6gMwxR-sxM';
+var supa = (window.supabase && window.supabase.createClient)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+var userEmail = '';
+var authMode = 'login';
+
+function setAuthMode(mode) {
+  authMode = mode;
+  var login = mode === 'login';
+  document.getElementById('auth-tab-login').classList.toggle('on', login);
+  document.getElementById('auth-tab-signup').classList.toggle('on', !login);
+  document.getElementById('auth-password2').style.display = login ? 'none' : 'block';
+  document.getElementById('auth-password').setAttribute('autocomplete', login ? 'current-password' : 'new-password');
+  document.getElementById('auth-title').textContent = login ? 'log in to momnts' : 'create your account';
+  document.getElementById('auth-submit').textContent = (login ? 'Log in' : 'Sign up') + ' →';
+  setAuthMsg('');
+}
+
+function setAuthMsg(msg, ok) {
+  var el = document.getElementById('auth-msg');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('ok', !!ok);
+}
+
+function showAuthGate() {
+  var img = document.getElementById('auth-logo-img');
+  if (img && !img.src) img.src = MOMNTS_LOGO;
+  document.getElementById('auth-gate').classList.remove('hidden');
+}
+
+function hideAuthGate() {
+  document.getElementById('auth-gate').classList.add('hidden');
+}
+
+function authSubmit() {
+  if (!supa) { setAuthMsg('Account service unavailable — check your connection and reload.'); return; }
+  var email = document.getElementById('auth-email').value.trim();
+  var pw = document.getElementById('auth-password').value;
+  if (!email || email.indexOf('@') < 1) { setAuthMsg('Enter a valid email address.'); return; }
+  if (pw.length < 6) { setAuthMsg('Password must be at least 6 characters.'); return; }
+  var btn = document.getElementById('auth-submit');
+  if (authMode === 'signup') {
+    var pw2 = document.getElementById('auth-password2').value;
+    if (pw !== pw2) { setAuthMsg('Those passwords don’t match.'); return; }
+    btn.disabled = true; setAuthMsg('Creating your account…', true);
+    supa.auth.signUp({ email: email, password: pw }).then(function(res) {
+      btn.disabled = false;
+      if (res.error) { setAuthMsg(res.error.message); return; }
+      if (res.data && res.data.session) { onAuthSuccess(res.data.session); }
+      else { setAuthMode('login'); setAuthMsg('Account created — log in to continue.', true); }
+    }).catch(function() { btn.disabled = false; setAuthMsg('Something went wrong. Please try again.'); });
+  } else {
+    btn.disabled = true; setAuthMsg('Logging in…', true);
+    supa.auth.signInWithPassword({ email: email, password: pw }).then(function(res) {
+      btn.disabled = false;
+      if (res.error) { setAuthMsg(res.error.message); return; }
+      onAuthSuccess(res.data && res.data.session);
+    }).catch(function() { btn.disabled = false; setAuthMsg('Something went wrong. Please try again.'); });
+  }
+}
+
+function onAuthSuccess(session) {
+  if (session && session.user) userEmail = session.user.email || '';
+  setAuthMsg('');
+  document.getElementById('auth-password').value = '';
+  var p2 = document.getElementById('auth-password2'); if (p2) p2.value = '';
+  hideAuthGate();
+  startApp();
+}
+
+function signOut() {
+  if (supa) { supa.auth.signOut().then(function() { location.reload(); }).catch(function() { location.reload(); }); }
+  else { location.reload(); }
+}
+
+// Decide what to show on load: the app if a session exists, otherwise the login gate.
+function bootAuth() {
+  if (!supa) { hideAuthGate(); startApp(); return; }   // SDK failed to load -> degrade to local-only
+  supa.auth.getSession().then(function(res) {
+    var session = res && res.data && res.data.session;
+    if (session) {
+      if (session.user) userEmail = session.user.email || '';
+      hideAuthGate();
+      startApp();
+    } else {
+      showAuthGate();
+    }
+  }).catch(function() { showAuthGate(); });
+}
+
+// Load saved data and render the app (or onboarding for a brand-new profile).
+function startApp() {
+  var user = loadState();
+  if (!user || !user.name) {
+    document.getElementById('ob-step-0').classList.add('on');
+    document.getElementById('ob-step-1').classList.remove('on');
+    buildObBackground();
+    document.getElementById('onboarding').style.display = 'flex';
+  } else {
+    userName = user.name;
+    userHandle = user.handle || '';
+    userFirstName = user.firstName || '';
+    userLastName = user.lastName || '';
+    document.getElementById('onboarding').style.display = 'none';
+    applyUser();
+    renderChecklist();
+    renderFavNav();
+    renderGameLog();
+    renderHome();
+  }
+  // Seed the milestone baseline so already-earned milestones don't toast on next log
+  _knownMilestones = computeMilestones().map(function(m){ return m.key; });
+}
+
 (function init() {
   // Apply brand logo images (embedded data URI)
   var slogoImg = document.getElementById('slogo-img');
@@ -5404,6 +5567,8 @@ function closeNav() {
   if (obLogoImg) obLogoImg.src = MOMNTS_LOGO;
   var mobileLogoImg = document.getElementById('mobile-logo-img');
   if (mobileLogoImg) mobileLogoImg.src = MOMNTS_LOGO;
+  var authLogoImg = document.getElementById('auth-logo-img');
+  if (authLogoImg) authLogoImg.src = MOMNTS_LOGO;
   // Embed the wordmark once as the ticket-stub counterfoil logo (avoids repeating
   // the base64 data URI in every rendered ticket).
   var tkLogoStyle = document.createElement('style');
@@ -5418,26 +5583,9 @@ function closeNav() {
       t = t.parentNode;
     }
   });
-  const user = loadState();
-  if (!user || !user.name) {
-    // First run or name never set — show onboarding from step 1
-    document.getElementById('ob-step-0').classList.add('on');
-    document.getElementById('ob-step-1').classList.remove('on');
-    buildObBackground();
-    document.getElementById('onboarding').style.display = 'flex';
-  } else {
-    // Returning user
-    userName = user.name;
-    userHandle = user.handle || '';
-    document.getElementById('onboarding').style.display = 'none';
-    applyUser();
-    renderChecklist();
-    renderFavNav();
-    renderGameLog();
-    renderHome();
-  }
-  // Seed the milestone baseline so already-earned milestones don't toast on next log
-  _knownMilestones = computeMilestones().map(function(m){ return m.key; });
+  // Gate the app behind login. bootAuth() checks for a Supabase session and either
+  // shows the login screen or calls startApp() to load + render the user's data.
+  bootAuth();
 })();
 
 renderFavNav();
