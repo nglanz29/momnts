@@ -34,7 +34,7 @@ a{color:inherit}
 .pillar{display:grid;gap:48px;align-items:center}
 .steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 /* hero blurred reels */
-#hero-bg{position:absolute;top:0;bottom:0;left:calc(-50vw + 50%);width:100vw;overflow:hidden;z-index:0;pointer-events:none;display:flex;justify-content:center;gap:22px;filter:blur(3.5px);opacity:.3}
+#hero-bg{position:absolute;top:0;bottom:0;left:calc(-50vw + 50%);width:100vw;overflow:hidden;z-index:0;pointer-events:none;display:flex;justify-content:center;gap:22px;filter:blur(7px);opacity:.24}
 .hero-reel{flex:0 0 330px}
 .hero-reel-inner{display:flex;flex-direction:column;gap:22px;animation:heroUp 80s linear infinite;will-change:transform}
 .hero-reel-inner.down{animation-name:heroDown}
@@ -203,6 +203,11 @@ function leagueLogo(l){return 'https://a.espncdn.com/i/teamlogos/leagues/500/'+l
 function headshot(sp,id){return 'https://a.espncdn.com/i/headshots/'+sp+'/players/full/'+id+'.png';}
 function ticketStub(p){
   var win=(p.result||'W').toUpperCase()==='W';
+  var aW=parseInt(p.scoreAway,10), hW=parseInt(p.scoreHome,10);
+  var awin=aW>hW, hwin=hW>aW;
+  var lg3=(String(p.scoreAway).length>=3||String(p.scoreHome).length>=3);
+  var sfs=lg3?17:23;
+  var scoreHtml='<div style="position:relative;font:700 '+sfs+'px \'Space Mono\';letter-spacing:-.5px;white-space:nowrap;"><span style="color:'+(awin?'#1FB574':'#EEF0EE')+'">'+p.scoreAway+'</span><span style="color:#5a6560;"> &middot; </span><span style="color:'+(hwin?'#1FB574':'#EEF0EE')+'">'+p.scoreHome+'</span></div>';
   var bars=[3,1,2,1,3,2,1,1,3,1,2,3,1,2,1,3,1,1,2,1,3,2];
   var bc=bars.map(function(w,i){return '<span style="width:'+w+'px;height:20px;background:'+(i%4===0?'#5a6560':'#EEF0EE')+';display:block"></span>';}).join('');
   var tagHtml=p.tag?'<div style="position:relative;align-self:flex-start;font:700 9px/1 \'JetBrains Mono\';letter-spacing:1.5px;text-transform:uppercase;color:#ffd98a;background:rgba(0,0,0,.32);border:1px solid rgba(255,217,138,.5);padding:2px 8px;border-radius:4px;">'+p.tag+'</div>':'';
@@ -231,7 +236,7 @@ function ticketStub(p){
       +'<div class="wm-logo" style="position:relative;width:58px;height:13px;background-position:center;"></div>'
       +'<div style="position:relative;font:8.5px \'JetBrains Mono\';letter-spacing:1.5px;color:#8a9590;">NO. '+p.serial+'</div>'
       +'<div style="position:relative;display:flex;gap:1.5px;align-items:flex-end;height:20px;">'+bc+'</div>'
-      +'<div style="position:relative;font:700 26px \'Space Mono\';letter-spacing:-.5px;color:#1FB574;">'+p.score+'</div>'
+      +scoreHtml
       +'<div style="position:relative;font:700 9px \'JetBrains Mono\';letter-spacing:1.5px;text-transform:uppercase;padding:2px 9px;border-radius:4px;background:'+(win?'#1FB574':'#b34a44')+';color:'+(win?'#0D0E10':'#fff')+';">'+(win?'WIN':'LOSS')+'</div>'
     +'</div>'
   +'</div>';
@@ -297,7 +302,7 @@ var PLAYERS=[{n:'Patrick Mahomes',sp:'nfl',id:'3139477',t:'KC · QB',s:'331 YDS 
 function playerRows(){
   return PLAYERS.map(function(p,i){
     return '<div style="display:flex;align-items:center;gap:13px;padding:13px 20px;border-bottom:'+(i<PLAYERS.length-1?'1px solid rgba(238,240,238,.06)':'none')+';">'
-     +'<div style="width:38px;height:38px;border-radius:50%;background:'+p.c+';flex:none;border:1.5px solid rgba(255,255,255,.14);overflow:hidden;background-image:url('+headshot(p.sp,p.id)+');background-size:cover;background-position:center top;"></div>'
+     +'<div style="width:38px;height:38px;border-radius:50%;background:'+p.c+';flex:none;border:1.5px solid rgba(255,255,255,.14);overflow:hidden;display:flex;align-items:center;justify-content:center;"><img src="'+headshot(p.sp,p.id)+'" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;" onerror="this.style.display=\'none\'"></div>'
      +'<div style="flex:1;min-width:0;"><div style="font:700 13px \'Space Grotesk\';color:#EEF0EE;">'+p.n+'</div><div style="font:9.5px \'JetBrains Mono\';letter-spacing:1px;color:#5a6560;margin-top:2px;text-transform:uppercase;">'+p.t+'</div></div>'
      +'<div style="font:700 10.5px \'JetBrains Mono\';letter-spacing:.5px;color:#1FB574;text-align:right;">'+p.s+'</div>'
     +'</div>';
@@ -316,7 +321,7 @@ function steps(){
 }
 
 // hero featured: ticket = Lakers/Warriors WCSF G4 ; momnt = 2021 Bengals AFC title (Bengals win)
-document.getElementById('heroStub').innerHTML=ticketStub({tag:'WESTERN CONF SEMIS · GAME 4',date:'MAY 08 2023',away:'WARRIORS',home:'LAKERS',venue:'CRYPTO.COM ARENA · LOS ANGELES',serial:'0027',score:'104',result:'W',awayColor:'#1d428a',homeColor:'#552583',awayLogo:teamLogo('nba','gs'),homeLogo:teamLogo('nba','lal')});
+document.getElementById('heroStub').innerHTML=ticketStub({tag:'WESTERN CONF SEMIS · GAME 4',date:'MAY 08 2023',away:'WARRIORS',home:'LAKERS',venue:'CRYPTO.COM ARENA · LOS ANGELES',serial:'0027',scoreAway:'101',scoreHome:'104',result:'W',awayColor:'#1d428a',homeColor:'#552583',awayLogo:teamLogo('nba','gs'),homeLogo:teamLogo('nba','lal')});
 document.getElementById('heroCard').innerHTML=momntCard({tier:'LEGENDARY',acc:'#f4a62a',accRgb:'244,166,42',title:'AFC CHAMPIONSHIP',serial:'0031',date:'JAN 30 2022',awayColor:'#e31837',homeColor:'#fb4f14',scoreAway:'24',scoreHome:'27',awayLogo:teamLogo('nfl','kc'),homeLogo:teamLogo('nfl','cin')});
 
 // vault: 4 distinct momnts
@@ -328,8 +333,8 @@ document.getElementById('vaultCards').innerHTML=vc;
 
 // pillar stubs: NHL Bruins@Rangers + MLB Dodgers@Giants
 document.getElementById('stubList').innerHTML=
-  ticketStub({tag:'',date:'FEB 24 2024',away:'BRUINS',home:'RANGERS',venue:'MADISON SQUARE GARDEN · NEW YORK',serial:'0044',score:'5',result:'W',awayColor:'#ffb81c',homeColor:'#0038a8',awayLogo:teamLogo('nhl','bos'),homeLogo:teamLogo('nhl','nyr')})
- +ticketStub({tag:'',date:'APR 02 2024',away:'DODGERS',home:'GIANTS',venue:'ORACLE PARK · SAN FRANCISCO',serial:'0019',score:'5',result:'L',awayColor:'#005a9c',homeColor:'#27251f',awayLogo:teamLogo('mlb','lad'),homeLogo:teamLogo('mlb','sf')});
+  ticketStub({tag:'',date:'FEB 24 2024',away:'BRUINS',home:'RANGERS',venue:'MADISON SQUARE GARDEN · NEW YORK',serial:'0044',scoreAway:'2',scoreHome:'5',result:'W',awayColor:'#ffb81c',homeColor:'#0038a8',awayLogo:teamLogo('nhl','bos'),homeLogo:teamLogo('nhl','nyr')})
+ +ticketStub({tag:'',date:'APR 02 2024',away:'DODGERS',home:'GIANTS',venue:'ORACLE PARK · SAN FRANCISCO',serial:'0019',scoreAway:'4',scoreHome:'5',result:'L',awayColor:'#005a9c',homeColor:'#27251f',awayLogo:teamLogo('mlb','lad'),homeLogo:teamLogo('mlb','sf')});
 
 document.getElementById('leagueRows').innerHTML=leagueRows();
 document.getElementById('playerRows').innerHTML=playerRows();
@@ -340,13 +345,13 @@ document.getElementById('steps').innerHTML=steps();
   var host=document.getElementById('hero-bg');
   if(!host) return;
   var items=[
-    ticketStub({tag:'NLDS · GAME 5',date:'OCT 11 2024',away:'METS',home:'DODGERS',venue:'DODGER STADIUM',serial:'0061',score:'10',result:'W',awayColor:'#002d72',homeColor:'#005a9c',awayLogo:teamLogo('mlb','nym'),homeLogo:teamLogo('mlb','lad')}),
+    ticketStub({tag:'NLDS · GAME 5',date:'OCT 11 2024',away:'METS',home:'DODGERS',venue:'DODGER STADIUM',serial:'0061',scoreAway:'6',scoreHome:'10',result:'W',awayColor:'#002d72',homeColor:'#005a9c',awayLogo:teamLogo('mlb','nym'),homeLogo:teamLogo('mlb','lad')}),
     momntCard({tier:'EPIC',acc:'#9d98ff',accRgb:'157,152,255',title:'BUZZER BEATER',serial:'0073',date:'MAY 12 2024',awayColor:'#fdbb30',homeColor:'#007a33',scoreAway:'112',scoreHome:'114',awayLogo:teamLogo('nba','ind'),homeLogo:teamLogo('nba','bos')}),
-    ticketStub({tag:'',date:'JAN 06 2024',away:'OILERS',home:'AVALANCHE',venue:'BALL ARENA · DENVER',serial:'0033',score:'6',result:'W',awayColor:'#ff4c00',homeColor:'#6f263d',awayLogo:teamLogo('nhl','edm'),homeLogo:teamLogo('nhl','col')}),
+    ticketStub({tag:'',date:'JAN 06 2024',away:'OILERS',home:'AVALANCHE',venue:'BALL ARENA · DENVER',serial:'0033',scoreAway:'6',scoreHome:'4',result:'W',awayColor:'#ff4c00',homeColor:'#6f263d',awayLogo:teamLogo('nhl','edm'),homeLogo:teamLogo('nhl','col')}),
     momntCard({tier:'RARE',acc:'#5bc8f5',accRgb:'91,200,245',title:'HAT TRICK NIGHT',serial:'0090',date:'MAR 03 2024',awayColor:'#041e42',homeColor:'#fcb514',scoreAway:'2',scoreHome:'5',awayLogo:teamLogo('nhl','dal'),homeLogo:teamLogo('nhl','bos')}),
-    ticketStub({tag:'',date:'SEP 21 2024',away:'YANKEES',home:'ASTROS',venue:'MINUTE MAID PARK · HOUSTON',serial:'0048',score:'7',result:'W',awayColor:'#132448',homeColor:'#002d62',awayLogo:teamLogo('mlb','nyy'),homeLogo:teamLogo('mlb','hou')}),
+    ticketStub({tag:'',date:'SEP 21 2024',away:'YANKEES',home:'ASTROS',venue:'MINUTE MAID PARK · HOUSTON',serial:'0048',scoreAway:'7',scoreHome:'3',result:'W',awayColor:'#132448',homeColor:'#002d62',awayLogo:teamLogo('mlb','nyy'),homeLogo:teamLogo('mlb','hou')}),
     momntCard({tier:'NOTABLE',acc:'#2fe39a',accRgb:'47,227,154',title:'TRIPLE OVERTIME',serial:'0115',date:'DEC 14 2024',awayColor:'#00538c',homeColor:'#0e2240',scoreAway:'126',scoreHome:'129',awayLogo:teamLogo('nba','dal'),homeLogo:teamLogo('nba','den')}),
-    ticketStub({tag:'WILD CARD',date:'JAN 13 2024',away:'PACKERS',home:'COWBOYS',venue:'AT&T STADIUM · ARLINGTON',serial:'0024',score:'48',result:'W',awayColor:'#203731',homeColor:'#041e42',awayLogo:teamLogo('nfl','gb'),homeLogo:teamLogo('nfl','dal')}),
+    ticketStub({tag:'WILD CARD',date:'JAN 14 2024',away:'PACKERS',home:'COWBOYS',venue:'AT&T STADIUM · ARLINGTON',serial:'0024',scoreAway:'48',scoreHome:'32',result:'W',awayColor:'#203731',homeColor:'#041e42',awayLogo:teamLogo('nfl','gb'),homeLogo:teamLogo('nfl','dal')}),
     momntCard({tier:'LEGENDARY',acc:'#f4a62a',accRgb:'244,166,42',title:'CUP CLINCHER',serial:'0005',date:'JUN 24 2024',awayColor:'#fa4616',homeColor:'#c8102e',scoreAway:'1',scoreHome:'2',awayLogo:teamLogo('nhl','edm'),homeLogo:teamLogo('nhl','fla')})
   ];
   var dur=[72,86,98,78,92];
