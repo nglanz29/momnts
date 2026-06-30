@@ -6,7 +6,7 @@ This file is the source of truth for working on Momnts. Read it fully before edi
 A personal sports attendance tracker — "Letterboxd meets MLB Ballpark meets stadium tracker." It's the collection of every game the user was actually *there* for: log the matchup, keep a commemorative ticket stub, track venues crossed off and players seen live. Tagline: "Live sports, logged." / "Admit one · you were there." It's a keepsake, not a stats dashboard — emotional payoff matters as much as data.
 
 ## The single most important architectural constraint
-**The entire app is ONE self-contained HTML file: `index.html`** (~4,600 lines). HTML + CSS + JS all inline, one `<script>` block. No build step, no bundler, no framework, no external JS/CSS files, no npm dependencies. The only external runtime dependencies are:
+**The entire app is ONE self-contained HTML file: `app/index.html`** (~4,600 lines). (The repo root `index.html` is the separate marketing landing page; the app lives at `app/index.html`, served at momntsapp.com/app/.) HTML + CSS + JS all inline, one `<script>` block. No build step, no bundler, no framework, no external JS/CSS files, no npm dependencies. The only external runtime dependencies are:
 - Google Fonts (Space Mono, JetBrains Mono, Barlow Condensed) via `<link>`
 - D3.js (CDN) for the US map
 - ESPN's public JSON APIs (called client-side at runtime)
@@ -15,12 +15,12 @@ A personal sports attendance tracker — "Letterboxd meets MLB Ballpark meets st
 Do not split this into multiple files or introduce a framework unless explicitly told to. If a change tempts you toward a build step, stop and flag it instead.
 
 ## How to run / test
-Open `index.html` directly in a browser (`file://`) or serve it (`python3 -m http.server`). No install. State persists in `localStorage`. Note: on `file://`, Safari blocks ESPN's cross-origin CDN (logos, headshots, canvas PNG export taint). Serving over http (localhost or hosting) fixes that. The user tests in Chrome and Safari on macOS.
+Open `app/index.html` directly in a browser (`file://`) or serve it (`python3 -m http.server`, then visit `/app/`). No install. State persists in `localStorage`. Note: on `file://`, Safari blocks ESPN's cross-origin CDN (logos, headshots, canvas PNG export taint). Serving over http (localhost or hosting) fixes that. The user tests in Chrome and Safari on macOS.
 
 ## CRITICAL BUILD RULES (the app has broken in production from violating these)
 After EVERY change to the JS, verify before claiming it works:
 
-1. **Parse check is authoritative.** Extract the inline `<script>` block and confirm it parses (e.g. `node -e "new Function(require('fs').readFileSync('index.html','utf8').match(/<script>(?![^>]*src)([\s\S]*?)<\/script>/g).sort((a,b)=>b.length-a.length)[0].replace(/<\/?script[^>]*>/g,''))"`). A syntax error anywhere kills the whole app ("nothing is clickable").
+1. **Parse check is authoritative.** Extract the inline `<script>` block and confirm it parses (e.g. `node -e "new Function(require('fs').readFileSync('app/index.html','utf8').match(/<script>(?![^>]*src)([\s\S]*?)<\/script>/g).sort((a,b)=>b.length-a.length)[0].replace(/<\/?script[^>]*>/g,''))"`). A syntax error anywhere kills the whole app ("nothing is clickable").
 2. **ZERO optional chaining (`?.`).** It breaks older iOS Safari, a target platform. Use `&&` chains: `obj && obj.prop && obj.prop.x`. Grep for `?.` after editing — must be 0.
 3. **No complex inline `onerror`** with nested escaped quotes — they've caused parse breaks. Use a simple `this.style.x` or the named helper `avatarFallback(this)` for image fallbacks.
 4. **No duplicate function declarations**, and watch for orphaned/double braces (`}}`) after edits.
