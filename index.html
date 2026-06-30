@@ -34,7 +34,7 @@ a{color:inherit}
 .pillar{display:grid;gap:48px;align-items:center}
 .steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 /* hero blurred reels */
-#hero-bg{position:absolute;top:0;bottom:0;left:calc(-50vw + 50%);width:100vw;overflow:hidden;z-index:0;pointer-events:none;display:flex;justify-content:center;gap:22px;filter:blur(7px);opacity:.24}
+#hero-bg{position:absolute;top:0;bottom:0;left:calc(-50vw + 50%);width:100vw;overflow:hidden;z-index:0;pointer-events:none;display:flex;justify-content:center;gap:22px;filter:blur(16px);opacity:.2}
 .hero-reel{flex:0 0 330px}
 .hero-reel-inner{display:flex;flex-direction:column;gap:22px;animation:heroUp 80s linear infinite;will-change:transform}
 .hero-reel-inner.down{animation-name:heroDown}
@@ -244,7 +244,7 @@ function ticketStub(p){
 function momntCard(p){
   var bars=[3,1,2,1,3,1,2,3,1,1,2,1,3,2,1,3,1,2];
   var bc=bars.map(function(w,i){return '<span style="width:'+w+'px;height:18px;background:'+(i%4===0?'#5a6560':'#c8cdcb')+';display:block"></span>';}).join('');
-  function circ(color,logoUrl){return '<div style="width:34px;height:34px;border-radius:50%;background:'+color+';border:1.5px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;overflow:hidden;">'+(logoUrl?'<img src="'+logoUrl+'" style="width:24px;height:24px;object-fit:contain;" onerror="this.style.display=\'none\'">':'')+'</div>';}
+  function circ(color,logoUrl){return '<div style="width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;overflow:hidden;">'+(logoUrl?'<img src="'+logoUrl+'" style="width:26px;height:26px;object-fit:contain;" onerror="this.style.display=\'none\'">':'')+'</div>';}
   return '<div class="mvc-wrap" style="width:300px;height:420px;perspective:1000px;flex:none;">'
    +'<div style="position:relative;width:100%;height:100%;border-radius:18px;overflow:hidden;background:linear-gradient(158deg,#171a1c,#0e1011 60%,#0b0d0e);border:1px solid rgba('+p.accRgb+',.35);box-shadow:0 30px 70px -28px rgba(0,0,0,.9), 0 0 40px -18px rgba('+p.accRgb+',.5), inset 0 0 0 1px rgba('+p.accRgb+',.08);">'
      +'<div style="position:absolute;inset:0;opacity:.2;mix-blend-mode:screen;pointer-events:none;background-image:radial-gradient(130% 90% at 28% 16%, rgba('+p.accRgb+',.5), transparent 58%), repeating-linear-gradient(118deg, rgba('+p.accRgb+',0) 0 9px, rgba('+p.accRgb+',.3) 9px 11px, rgba('+p.accRgb+',0) 11px 20px);"></div>'
