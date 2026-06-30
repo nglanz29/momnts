@@ -219,9 +219,9 @@ function ticketStub(p){
       +'<div style="position:relative;font:10px \'JetBrains Mono\';letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.72);">'+p.date+'</div>'
       +'<div style="position:relative;display:flex;align-items:center;gap:10px;">'
         +lg(p.awayLogo)
-        +'<span style="font:700 25px \'Barlow Condensed\';letter-spacing:.4px;text-transform:uppercase;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+p.away+'</span>'
+        +'<span style="font:700 25px \'Barlow Condensed\';letter-spacing:.4px;text-transform:uppercase;color:#fff;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+p.away+'</span>'
         +'<span style="font:700 18px \'Barlow Condensed\';color:rgba(255,255,255,.7);">&middot;</span>'
-        +'<span style="font:700 25px \'Barlow Condensed\';letter-spacing:.4px;text-transform:uppercase;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+p.home+'</span>'
+        +'<span style="font:700 25px \'Barlow Condensed\';letter-spacing:.4px;text-transform:uppercase;color:#fff;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+p.home+'</span>'
         +lg(p.homeLogo)
       +'</div>'
       +'<div style="position:relative;font:10.5px \'JetBrains Mono\';letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.9);">'+p.venue+'</div>'
@@ -325,16 +325,16 @@ document.getElementById('heroStub').innerHTML=ticketStub({tag:'WESTERN CONF SEMI
 document.getElementById('heroCard').innerHTML=momntCard({tier:'LEGENDARY',acc:'#f4a62a',accRgb:'244,166,42',title:'AFC CHAMPIONSHIP',serial:'0031',date:'JAN 30 2022',awayColor:'#e31837',homeColor:'#fb4f14',scoreAway:'24',scoreHome:'27',awayLogo:teamLogo('nfl','kc'),homeLogo:teamLogo('nfl','cin')});
 
 // vault: 4 distinct momnts
-var vc=momntCard({tier:'LEGENDARY',acc:'#f4a62a',accRgb:'244,166,42',title:'WORLD SERIES NO-HITTER',serial:'0007',date:'OCT 26 2023',awayColor:'#002d62',homeColor:'#132448',scoreAway:'0',scoreHome:'4',awayLogo:teamLogo('mlb','hou'),homeLogo:teamLogo('mlb','nyy')})
- +momntCard({tier:'EPIC',acc:'#9d98ff',accRgb:'157,152,255',title:'WALK-OFF GRAND SLAM',serial:'0052',date:'JUL 14 2024',awayColor:'#ce1141',homeColor:'#002d72',scoreAway:'6',scoreHome:'7',awayLogo:teamLogo('mlb','atl'),homeLogo:teamLogo('mlb','nym')}).replace('mvc-wrap','mvc-wrap vault-extra')
- +momntCard({tier:'RARE',acc:'#5bc8f5',accRgb:'91,200,245',title:'GAME 7 OVERTIME WINNER',serial:'0058',date:'JUN 09 2024',awayColor:'#ff4c00',homeColor:'#006847',scoreAway:'3',scoreHome:'4',awayLogo:teamLogo('nhl','edm'),homeLogo:teamLogo('nhl','dal')}).replace('mvc-wrap','mvc-wrap vault-extra')
- +momntCard({tier:'NOTABLE',acc:'#2fe39a',accRgb:'47,227,154',title:'ROOKIE TRIPLE-DOUBLE',serial:'0102',date:'NOV 22 2024',awayColor:'#007ac1',homeColor:'#c4ced4',scoreAway:'108',scoreHome:'121',awayLogo:teamLogo('nba','okc'),homeLogo:teamLogo('nba','sa')}).replace('mvc-wrap','mvc-wrap vault-extra');
+var vc=momntCard({tier:'LEGENDARY',acc:'#f4a62a',accRgb:'244,166,42',title:'PERFECT GAME',serial:'0024',date:'JUN 28 2023',awayColor:'#003831',homeColor:'#132448',scoreAway:'0',scoreHome:'11',awayLogo:teamLogo('mlb','oak'),homeLogo:teamLogo('mlb','nyy')})
+ +momntCard({tier:'EPIC',acc:'#9d98ff',accRgb:'157,152,255',title:'WALK-OFF GRAND SLAM',serial:'0001',date:'OCT 25 2024',awayColor:'#132448',homeColor:'#005a9c',scoreAway:'3',scoreHome:'6',awayLogo:teamLogo('mlb','nyy'),homeLogo:teamLogo('mlb','lad')}).replace('mvc-wrap','mvc-wrap vault-extra')
+ +momntCard({tier:'RARE',acc:'#5bc8f5',accRgb:'91,200,245',title:'GAME 7 BUZZER-BEATER',serial:'0058',date:'MAY 12 2019',awayColor:'#006bb6',homeColor:'#ce1141',scoreAway:'90',scoreHome:'92',awayLogo:teamLogo('nba','phi'),homeLogo:teamLogo('nba','tor')}).replace('mvc-wrap','mvc-wrap vault-extra')
+ +momntCard({tier:'NOTABLE',acc:'#2fe39a',accRgb:'47,227,154',title:'6-FOR-6, 3 HR NIGHT',serial:'0050',date:'SEP 19 2024',awayColor:'#00a3e0',homeColor:'#005a9c',scoreAway:'4',scoreHome:'20',awayLogo:teamLogo('mlb','mia'),homeLogo:teamLogo('mlb','lad')}).replace('mvc-wrap','mvc-wrap vault-extra');
 document.getElementById('vaultCards').innerHTML=vc;
 
 // pillar stubs: NHL Bruins@Rangers + MLB Dodgers@Giants
 document.getElementById('stubList').innerHTML=
-  ticketStub({tag:'',date:'FEB 24 2024',away:'BRUINS',home:'RANGERS',venue:'MADISON SQUARE GARDEN · NEW YORK',serial:'0044',scoreAway:'2',scoreHome:'5',result:'W',awayColor:'#ffb81c',homeColor:'#0038a8',awayLogo:teamLogo('nhl','bos'),homeLogo:teamLogo('nhl','nyr')})
- +ticketStub({tag:'',date:'APR 02 2024',away:'DODGERS',home:'GIANTS',venue:'ORACLE PARK · SAN FRANCISCO',serial:'0019',scoreAway:'4',scoreHome:'5',result:'L',awayColor:'#005a9c',homeColor:'#27251f',awayLogo:teamLogo('mlb','lad'),homeLogo:teamLogo('mlb','sf')});
+  ticketStub({tag:'NBA FINALS · GAME 5',date:'JUN 17 2024',away:'MAVERICKS',home:'CELTICS',venue:'TD GARDEN · BOSTON',serial:'0071',scoreAway:'88',scoreHome:'106',result:'W',awayColor:'#00538c',homeColor:'#007a33',awayLogo:teamLogo('nba','dal'),homeLogo:teamLogo('nba','bos')})
+ +ticketStub({tag:'WORLD SERIES · GAME 5',date:'NOV 01 2023',away:'RANGERS',home:'DIAMONDBACKS',venue:'CHASE FIELD · PHOENIX',serial:'0019',scoreAway:'5',scoreHome:'0',result:'L',awayColor:'#003278',homeColor:'#a71930',awayLogo:teamLogo('mlb','tex'),homeLogo:teamLogo('mlb','ari')});
 
 document.getElementById('leagueRows').innerHTML=leagueRows();
 document.getElementById('playerRows').innerHTML=playerRows();
@@ -345,14 +345,14 @@ document.getElementById('steps').innerHTML=steps();
   var host=document.getElementById('hero-bg');
   if(!host) return;
   var items=[
-    ticketStub({tag:'NLDS · GAME 5',date:'OCT 11 2024',away:'METS',home:'DODGERS',venue:'DODGER STADIUM',serial:'0061',scoreAway:'6',scoreHome:'10',result:'W',awayColor:'#002d72',homeColor:'#005a9c',awayLogo:teamLogo('mlb','nym'),homeLogo:teamLogo('mlb','lad')}),
-    momntCard({tier:'EPIC',acc:'#9d98ff',accRgb:'157,152,255',title:'BUZZER BEATER',serial:'0073',date:'MAY 12 2024',awayColor:'#fdbb30',homeColor:'#007a33',scoreAway:'112',scoreHome:'114',awayLogo:teamLogo('nba','ind'),homeLogo:teamLogo('nba','bos')}),
-    ticketStub({tag:'',date:'JAN 06 2024',away:'OILERS',home:'AVALANCHE',venue:'BALL ARENA · DENVER',serial:'0033',scoreAway:'6',scoreHome:'4',result:'W',awayColor:'#ff4c00',homeColor:'#6f263d',awayLogo:teamLogo('nhl','edm'),homeLogo:teamLogo('nhl','col')}),
-    momntCard({tier:'RARE',acc:'#5bc8f5',accRgb:'91,200,245',title:'HAT TRICK NIGHT',serial:'0090',date:'MAR 03 2024',awayColor:'#041e42',homeColor:'#fcb514',scoreAway:'2',scoreHome:'5',awayLogo:teamLogo('nhl','dal'),homeLogo:teamLogo('nhl','bos')}),
-    ticketStub({tag:'',date:'SEP 21 2024',away:'YANKEES',home:'ASTROS',venue:'MINUTE MAID PARK · HOUSTON',serial:'0048',scoreAway:'7',scoreHome:'3',result:'W',awayColor:'#132448',homeColor:'#002d62',awayLogo:teamLogo('mlb','nyy'),homeLogo:teamLogo('mlb','hou')}),
-    momntCard({tier:'NOTABLE',acc:'#2fe39a',accRgb:'47,227,154',title:'TRIPLE OVERTIME',serial:'0115',date:'DEC 14 2024',awayColor:'#00538c',homeColor:'#0e2240',scoreAway:'126',scoreHome:'129',awayLogo:teamLogo('nba','dal'),homeLogo:teamLogo('nba','den')}),
     ticketStub({tag:'WILD CARD',date:'JAN 14 2024',away:'PACKERS',home:'COWBOYS',venue:'AT&T STADIUM · ARLINGTON',serial:'0024',scoreAway:'48',scoreHome:'32',result:'W',awayColor:'#203731',homeColor:'#041e42',awayLogo:teamLogo('nfl','gb'),homeLogo:teamLogo('nfl','dal')}),
-    momntCard({tier:'LEGENDARY',acc:'#f4a62a',accRgb:'244,166,42',title:'CUP CLINCHER',serial:'0005',date:'JUN 24 2024',awayColor:'#fa4616',homeColor:'#c8102e',scoreAway:'1',scoreHome:'2',awayLogo:teamLogo('nhl','edm'),homeLogo:teamLogo('nhl','fla')})
+    momntCard({tier:'LEGENDARY',acc:'#f4a62a',accRgb:'244,166,42',title:'PERFECT GAME',serial:'0024',date:'JUN 28 2023',awayColor:'#003831',homeColor:'#132448',scoreAway:'0',scoreHome:'11',awayLogo:teamLogo('mlb','oak'),homeLogo:teamLogo('mlb','nyy')}),
+    ticketStub({tag:'STANLEY CUP · GAME 7',date:'JUN 24 2024',away:'OILERS',home:'PANTHERS',venue:'AMERANT BANK ARENA · SUNRISE',serial:'0066',scoreAway:'1',scoreHome:'2',result:'W',awayColor:'#ff4c00',homeColor:'#041e42',awayLogo:teamLogo('nhl','edm'),homeLogo:teamLogo('nhl','fla')}),
+    momntCard({tier:'EPIC',acc:'#9d98ff',accRgb:'157,152,255',title:'WALK-OFF GRAND SLAM',serial:'0001',date:'OCT 25 2024',awayColor:'#132448',homeColor:'#005a9c',scoreAway:'3',scoreHome:'6',awayLogo:teamLogo('mlb','nyy'),homeLogo:teamLogo('mlb','lad')}),
+    ticketStub({tag:'NBA FINALS · GAME 5',date:'JUN 12 2023',away:'HEAT',home:'NUGGETS',venue:'BALL ARENA · DENVER',serial:'0035',scoreAway:'89',scoreHome:'94',result:'W',awayColor:'#98002e',homeColor:'#0e2240',awayLogo:teamLogo('nba','mia'),homeLogo:teamLogo('nba','den')}),
+    momntCard({tier:'RARE',acc:'#5bc8f5',accRgb:'91,200,245',title:'GAME 7 BUZZER-BEATER',serial:'0058',date:'MAY 12 2019',awayColor:'#006bb6',homeColor:'#ce1141',scoreAway:'90',scoreHome:'92',awayLogo:teamLogo('nba','phi'),homeLogo:teamLogo('nba','tor')}),
+    ticketStub({tag:'ALCS · GAME 7',date:'OCT 23 2023',away:'RANGERS',home:'ASTROS',venue:'MINUTE MAID PARK · HOUSTON',serial:'0041',scoreAway:'11',scoreHome:'4',result:'W',awayColor:'#003278',homeColor:'#002d62',awayLogo:teamLogo('mlb','tex'),homeLogo:teamLogo('mlb','hou')}),
+    momntCard({tier:'NOTABLE',acc:'#2fe39a',accRgb:'47,227,154',title:'6-FOR-6, 3 HR NIGHT',serial:'0050',date:'SEP 19 2024',awayColor:'#00a3e0',homeColor:'#005a9c',scoreAway:'4',scoreHome:'20',awayLogo:teamLogo('mlb','mia'),homeLogo:teamLogo('mlb','lad')})
   ];
   var dur=[72,86,98,78,92];
   for(var r=0;r<5;r++){
