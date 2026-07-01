@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>momnts</title>
+<meta name="robots" content="noindex, nofollow">
+<script>
+// GitHub Pages serves this for any unmatched path. For app deep links like
+// /app/game-log (which have no real file), redirect into the SPA at /app/ and
+// pass the tab along as ?tab=; the app reads it and restores the clean path.
+(function () {
+  var p = location.pathname || '';
+  var m = p.match(/\/app\/(.+)$/);
+  if (m) {
+    var slug = m[1].replace(/\/+$/, '');
+    location.replace('/app/?tab=' + encodeURIComponent(slug) + location.hash);
+  } else {
+    location.replace('/');
+  }
+})();
+</script>
+</head>
+<body></body>
+</html>

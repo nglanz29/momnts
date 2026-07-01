@@ -1673,11 +1673,52 @@ let curPin = null;
 let proj = null;
 let mapReady = false;
 
-function go(id, el) {
+// ── TAB ROUTING (URL path per tab for GA4) ────────────────────────────
+// Internal tab id -> URL slug (home = the /app/ base, no slug).
+var TAB_SLUGS  = { home:'', log:'game-log', stadiums:'stadiums', records:'my-records', players:'players-seen', moments:'momnts', myteams:'my-teams' };
+var TAB_TITLES = { home:'Dashboard', log:'Game Log', stadiums:'Stadiums', records:'My Records', players:'Players Seen', moments:'Momnts', myteams:'My Teams' };
+var NAV_ORDER  = ['home','log','stadiums','records','players','moments','myteams']; // sidebar button order
+var SLUG_TABS  = {};
+Object.keys(TAB_SLUGS).forEach(function(k){ SLUG_TABS[TAB_SLUGS[k]] = k; });
+
+// Path up to and including "/app/" (works for /app/, /app/index.html, /app/<slug>).
+function appBase() {
+  var p = location.pathname;
+  var i = p.indexOf('/app/');
+  return i >= 0 ? p.slice(0, i + 5) : '/app/';
+}
+function navButtonFor(id) {
+  var idx = NAV_ORDER.indexOf(id);
+  var btns = document.querySelectorAll('.sidebar .ni');
+  return (idx >= 0 && btns[idx]) ? btns[idx] : null;
+}
+// Which tab does the current URL point at? (?tab= is set by the 404.html deep-link shim.)
+function tabFromLocation() {
+  var slug = new URLSearchParams(location.search).get('tab');
+  if (slug == null) {
+    var p = location.pathname, i = p.indexOf('/app/');
+    slug = (i >= 0 ? p.slice(i + 5) : '').replace(/^\/+|\/+$/g, '');
+    if (slug === 'index.html') slug = '';
+  }
+  return SLUG_TABS[slug] || 'home';
+}
+// Notify GTM/GA4 of a virtual pageview.
+function trackPageView(path, id) {
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    event: 'spa_navigation',
+    page_path: path,
+    page_location: location.origin + path,
+    page_title: 'momnts — ' + (TAB_TITLES[id] || id)
+  });
+}
+
+// Switch the visible tab + nav highlight + render (no history/GA side effects).
+function applyTab(id) {
   document.querySelectorAll('.pg').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
-  document.getElementById(id).classList.add('on');
-  if (el) el.classList.add('on');
+  var pg = document.getElementById(id); if (pg) pg.classList.add('on');
+  var btn = navButtonFor(id); if (btn) btn.classList.add('on');
   if (id === 'myteams') renderTeams();
   if (id === 'players') renderPlayers();
   if (id === 'home') renderHome();
@@ -1686,6 +1727,30 @@ function go(id, el) {
   if (id === 'moments') renderMoments();
   if (id === 'stadiums') { initMap(); renderVenues(); }
 }
+
+// User-initiated tab change: switch, push a clean URL, fire a pageview.
+function go(id, el) {
+  applyTab(id);
+  if (!(id in TAB_SLUGS)) return;
+  var path = appBase() + TAB_SLUGS[id];
+  if (location.pathname !== path) { try { history.pushState({ tab: id }, '', path); } catch(e){} }
+  trackPageView(path, id);
+}
+
+// Sync the tab to the URL on first render / back-forward, without stacking history.
+function routeInitial() {
+  var id = tabFromLocation();
+  applyTab(id);
+  var path = appBase() + TAB_SLUGS[id];
+  if (location.pathname !== path || location.search) {
+    try { history.replaceState({ tab: id }, '', path); } catch(e){}
+  }
+}
+window.addEventListener('popstate', function() {
+  var id = tabFromLocation();
+  applyTab(id);
+  trackPageView(appBase() + TAB_SLUGS[id], id);
+});
 
 function ckip(el) {
   el.closest('.chips').querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
@@ -5831,6 +5896,7 @@ function startApp() {
     renderFavNav();
     renderGameLog();
     renderHome();
+    routeInitial();   // open the tab named in the URL (deep link) + normalize the path
   }
   // Seed the milestone baseline so already-earned milestones don't toast on next log
   _knownMilestones = computeMilestones().map(function(m){ return m.key; });
