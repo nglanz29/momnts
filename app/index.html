@@ -555,17 +555,17 @@ textarea.mi{resize:none;height:68px;}
 .ob-skip{display:block;text-align:center;font-size:13px;color:var(--text3);margin-top:14px;cursor:pointer;}
 .ob-skip:hover{color:var(--text2);}
 /* Animated blurred card collage behind the onboarding form (slot-machine reels) */
-#ob-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;display:flex;justify-content:center;gap:22px;filter:blur(2.5px) saturate(1);opacity:.62;}
+.reel-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;display:flex;justify-content:center;gap:22px;filter:blur(2.5px) saturate(1);opacity:.62;}
 .ob-reel{flex:0 0 340px;}
 .ob-reel-inner{display:flex;flex-direction:column;gap:22px;will-change:transform;animation:ob-reel-up 90s linear infinite;}
 .ob-reel-inner.down{animation-name:ob-reel-down;}
 .ob-w{width:340px;}
-#ob-bg-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 62% 56% at center, rgba(13,14,16,.46) 0%, rgba(13,14,16,.64) 46%, rgba(13,14,16,.8) 100%);}
+.reel-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 62% 56% at center, rgba(13,14,16,.46) 0%, rgba(13,14,16,.64) 46%, rgba(13,14,16,.8) 100%);}
 @keyframes ob-reel-up{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 @keyframes ob-reel-down{from{transform:translateY(-50%)}to{transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.ob-reel-inner{animation:none;}}
 /* On phones only ~1 reel is visible — drop the rest so we don't animate/blur heavy cards offscreen */
-@media (max-width:560px){#ob-bg{gap:14px;}.ob-reel:nth-child(n+4){display:none;}}
+@media (max-width:560px){.reel-bg{gap:14px;}.ob-reel:nth-child(n+4){display:none;}}
 .ob-sport-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin:20px 0 10px;display:flex;align-items:center;gap:7px;}
 .ob-sport-label img{width:16px;height:16px;object-fit:contain;}
 .ob-tgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:4px;}
@@ -641,6 +641,19 @@ textarea.mi{resize:none;height:68px;}
 .auth-msg.ok{color:var(--signal);}
 .auth-row{display:flex;gap:10px;}
 .auth-row .ob-input{flex:1;min-width:0;}
+
+/* PROFILE / ACCOUNT PANEL */
+.pm-overlay{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+.pm-overlay.on{display:flex;}
+.pm-card{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:24px;width:400px;max-width:94vw;}
+.pm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.pm-title{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:-.3px;}
+.pm-x{background:none;border:none;color:var(--text3);font-size:24px;line-height:1;cursor:pointer;padding:0 4px;}
+.pm-x:hover{color:var(--text);}
+.pm-email{font-size:12px;color:var(--text3);margin-bottom:16px;word-break:break-all;}
+.pm-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin:12px 0 6px;}
+.pm-signout{width:100%;background:none;border:1px solid var(--border2);border-radius:10px;padding:11px;color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:10px;}
+.pm-signout:hover{border-color:#ff6b6b;color:#ff6b6b;}
 </style>
 </head>
 <body>
@@ -660,6 +673,29 @@ textarea.mi{resize:none;height:68px;}
     <input class="ob-input" id="auth-password2" type="password" placeholder="Confirm password" autocomplete="new-password" style="display:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();authSubmit();}">
     <div class="auth-msg" id="auth-msg"></div>
     <button class="ob-btn" id="auth-submit" type="button" onclick="authSubmit()">Log in →</button>
+  </div>
+</div>
+
+<!-- PROFILE / ACCOUNT PANEL -->
+<div id="profile-modal" class="pm-overlay" onclick="if(event.target===this)closeProfile()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title">Account</div>
+      <button class="pm-x" type="button" onclick="closeProfile()" aria-label="Close">&times;</button>
+    </div>
+    <div class="pm-email" id="pm-email">—</div>
+    <label class="pm-label">Name</label>
+    <div class="auth-row">
+      <input class="ob-input" id="pm-first" type="text" maxlength="32" placeholder="First name" autocomplete="off">
+      <input class="ob-input" id="pm-last" type="text" maxlength="32" placeholder="Last name" autocomplete="off">
+    </div>
+    <label class="pm-label">Display name</label>
+    <input class="ob-input" id="pm-display" type="text" maxlength="32" placeholder="Display name" autocomplete="off">
+    <label class="pm-label">Username</label>
+    <input class="ob-input" id="pm-handle" type="text" maxlength="24" placeholder="@handle" autocomplete="off">
+    <div class="auth-msg" id="pm-msg" style="min-height:0;margin-bottom:2px;"></div>
+    <button class="ob-btn" type="button" onclick="saveProfile()">Save</button>
+    <button class="pm-signout" type="button" onclick="signOut()">Sign out</button>
   </div>
 </div>
 
@@ -718,8 +754,8 @@ textarea.mi{resize:none;height:68px;}
   <button class="ni" onclick="go('moments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>momnts</button>
   <button class="ni" onclick="go('myteams',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>my teams</button>
   <div class="sbottom">
-    <div class="avatar" id="sb-avatar">?</div>
-    <div style="flex:1"><div style="font-size:13px;font-weight:600;" id="sb-name">You</div><div style="font-size:11px;color:var(--text3);" id="sb-gamecount">0 games</div></div>
+    <div class="avatar" id="sb-avatar" onclick="openProfile()" style="cursor:pointer;" title="Account">?</div>
+    <div style="flex:1;cursor:pointer;" onclick="openProfile()" title="Account"><div style="font-size:13px;font-weight:600;" id="sb-name">You</div><div style="font-size:11px;color:var(--text3);" id="sb-gamecount">0 games</div></div>
     <button onclick="signOut()" title="Sign out" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;border-radius:4px;flex-shrink:0;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
   </div>
 </nav>
@@ -5293,9 +5329,11 @@ function obToggleTeam(el, id) {
 }
 
 // Build the animated blurred card collage behind the onboarding form (runs once).
-function buildObBackground() {
-  var host = document.getElementById('onboarding');
-  if (!host || document.getElementById('ob-bg')) return;
+function buildObBackground(hostId, bgId) {
+  hostId = hostId || 'onboarding';
+  bgId = bgId || 'ob-bg';
+  var host = document.getElementById(hostId);
+  if (!host || document.getElementById(bgId)) return;
   var L = 'https://a.espncdn.com/i/teamlogos/';
   var momnts = [
     {id:'obm1',title:'AFC Championship clincher',category:'playoff',tier:'legendary',date:'2024-01-28',league:'NFL'},
@@ -5326,7 +5364,7 @@ function buildObBackground() {
   for (var i=items.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=items[i]; items[i]=items[j]; items[j]=t; }
 
   var durations=[82,96,110,88,104,120];
-  var bg=document.createElement('div'); bg.id='ob-bg';
+  var bg=document.createElement('div'); bg.id=bgId; bg.className='reel-bg';
   for (var r=0;r<6;r++){
     var slice='';
     for (var k=0;k<5;k++){ slice += items[(r*3+k)%items.length]; }
@@ -5338,7 +5376,7 @@ function buildObBackground() {
     rin.innerHTML=slice+slice;   // duplicate the set for a seamless loop
     reel.appendChild(rin); bg.appendChild(reel);
   }
-  var scrim=document.createElement('div'); scrim.id='ob-bg-scrim';
+  var scrim=document.createElement('div'); scrim.className='reel-scrim';
   host.insertBefore(scrim, host.firstChild);
   host.insertBefore(bg, host.firstChild);
 }
@@ -5472,6 +5510,7 @@ function setAuthMsg(msg, ok) {
 function showAuthGate() {
   var img = document.getElementById('auth-logo-img');
   if (img && !img.src) img.src = MOMNTS_LOGO;
+  buildObBackground('auth-gate', 'auth-bg');   // reuse the blurred ticket/momnt reel collage
   document.getElementById('auth-gate').classList.remove('hidden');
 }
 
@@ -5518,6 +5557,45 @@ function onAuthSuccess(session) {
 function signOut() {
   if (supa) { supa.auth.signOut().then(function() { location.reload(); }).catch(function() { location.reload(); }); }
   else { location.reload(); }
+}
+
+// ── PROFILE / ACCOUNT PANEL ───────────────────────────────────────────
+function openProfile() {
+  document.getElementById('pm-email').textContent = userEmail || '(local profile)';
+  document.getElementById('pm-first').value = userFirstName || '';
+  document.getElementById('pm-last').value = userLastName || '';
+  document.getElementById('pm-display').value = userName || '';
+  document.getElementById('pm-handle').value = userHandle ? ('@' + userHandle) : '';
+  setProfileMsg('');
+  document.getElementById('profile-modal').classList.add('on');
+}
+
+function closeProfile() {
+  document.getElementById('profile-modal').classList.remove('on');
+}
+
+function setProfileMsg(msg, ok) {
+  var el = document.getElementById('pm-msg');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('ok', !!ok);
+}
+
+function saveProfile() {
+  var first = document.getElementById('pm-first').value.trim();
+  var last = document.getElementById('pm-last').value.trim();
+  var disp = document.getElementById('pm-display').value.trim() || first;
+  var handle = document.getElementById('pm-handle').value.trim().replace(/^@+/, '');
+  if (!disp) { setProfileMsg('Add a display name (or a first name).'); return; }
+  if (!handle) handle = disp.toLowerCase().replace(/[^a-z0-9]/g, '');
+  userFirstName = first;
+  userLastName = last;
+  userName = disp;
+  userHandle = handle;
+  saveState();
+  applyUser();
+  setProfileMsg('Saved.', true);
+  setTimeout(closeProfile, 700);
 }
 
 // Decide what to show on load: the app if a session exists, otherwise the login gate.
