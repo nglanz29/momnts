@@ -669,6 +669,13 @@ textarea.mi{resize:none;height:68px;}
 .pm-x:hover{color:var(--text);}
 .pm-email{font-size:12px;color:var(--text3);margin-bottom:16px;word-break:break-all;}
 .pm-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin:12px 0 6px;}
+.pm-av-row{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.pm-av{width:56px;height:56px;border-radius:50%;background:var(--bg4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--text2);background-size:cover;background-position:center;overflow:hidden;}
+.pm-av-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
+.pm-av-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;color:var(--text);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;}
+.pm-av-btn:hover{border-color:var(--accent);}
+.pm-av-remove{background:none;border:none;color:var(--text3);font-size:11px;font-family:inherit;cursor:pointer;padding:0 2px;}
+.pm-av-remove:hover{color:#ff6b6b;}
 .pm-signout{width:100%;background:none;border:1px solid var(--border2);border-radius:10px;padding:11px;color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:10px;}
 .pm-signout:hover{border-color:#ff6b6b;color:#ff6b6b;}
 </style>
@@ -718,6 +725,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="pm-x" type="button" onclick="closeProfile()" aria-label="Close">&times;</button>
     </div>
     <div class="pm-email" id="pm-email">—</div>
+    <div class="pm-av-row">
+      <div class="pm-av" id="pm-av-preview">?</div>
+      <div class="pm-av-actions">
+        <button class="pm-av-btn" type="button" onclick="document.getElementById('pm-av-input').click()">Upload photo</button>
+        <button class="pm-av-remove" type="button" id="pm-av-remove" onclick="removeAvatar()">Remove</button>
+      </div>
+      <input type="file" id="pm-av-input" accept="image/*" style="display:none;" onchange="onAvatarPick(event)">
+    </div>
     <label class="pm-label">Name</label>
     <div class="auth-row">
       <input class="ob-input" id="pm-first" type="text" maxlength="32" placeholder="First name" autocomplete="off">
@@ -5202,7 +5217,7 @@ function buildBundle() {
     _app: 'momnts',
     _version: 1,
     _exported: new Date().toISOString(),
-    user: { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName },
+    user: { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName, avatar: userAvatar },
     favs: [...favs],
     games: savedGames,
     visited: [...visitedStadiums],
@@ -5264,6 +5279,7 @@ function importData(e) {
     userHandle = (data.user && data.user.handle) || '';
     userFirstName = (data.user && data.user.firstName) || '';
     userLastName = (data.user && data.user.lastName) || '';
+    userAvatar = (data.user && data.user.avatar) || '';
     favs = new Set(data.favs || []);
     savedGames = (data.games || []).filter(function(g){ return g && g.id && g.date; });
     savedGames.forEach(function(g){ canonicalGame(g); });
@@ -5272,7 +5288,7 @@ function importData(e) {
     checklistDone = data.checklist || [false,false,false,false,false];
     playerList = data.players || [];
     savedMoments = data.moments || [];
-    LS.save('user', { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName });
+    LS.save('user', { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName, avatar: userAvatar });
     LS.save('favs', [...favs]);
     LS.save('games', savedGames);
     LS.save('visited', [...visitedStadiums]);
@@ -5305,7 +5321,7 @@ const LS = {
 };
 
 function saveState() {
-  LS.save('user',    { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName });
+  LS.save('user',    { name: userName, handle: userHandle, firstName: userFirstName, lastName: userLastName, avatar: userAvatar });
   LS.save('favs',    [...favs]);
   LS.save('games',   savedGames);
   LS.save('visited', [...visitedStadiums]);
@@ -5478,6 +5494,8 @@ let userName = '';
 let userHandle = '';
 let userFirstName = '';
 let userLastName = '';
+let userAvatar = '';     // profile photo as a downscaled JPEG data URI (synced in the bundle)
+let pmAvatar = '';       // pending avatar being edited in the Account panel
 let savedGames = [];
 let savedMoments = [];
 let visitedStadiums = new Set();
@@ -5489,7 +5507,18 @@ function applyUser() {
   var initSrc = (userFirstName.charAt(0) || '') + (userLastName.charAt(0) || '');
   const initials = (initSrc || name.slice(0,2)).toUpperCase();
   document.getElementById('sb-name').textContent = name;
-  document.getElementById('sb-avatar').textContent = initials;
+  var av = document.getElementById('sb-avatar');
+  if (av) {
+    if (userAvatar) {
+      av.textContent = '';
+      av.style.backgroundImage = 'url(' + userAvatar + ')';
+      av.style.backgroundSize = 'cover';
+      av.style.backgroundPosition = 'center';
+    } else {
+      av.style.backgroundImage = '';
+      av.textContent = initials;
+    }
+  }
   document.getElementById('home-title').textContent = 'your dashboard';
   document.getElementById('home-sub').textContent = 'welcome back, ' + name + '.';
   // Show @handle in the sidebar if set
@@ -5634,8 +5663,59 @@ function openProfile() {
   document.getElementById('pm-last').value = userLastName || '';
   document.getElementById('pm-display').value = userName || '';
   document.getElementById('pm-handle').value = userHandle ? ('@' + userHandle) : '';
+  pmAvatar = userAvatar || '';
+  renderPmAvatar();
   setProfileMsg('');
   document.getElementById('profile-modal').classList.add('on');
+}
+
+// Render the Account-panel avatar preview (photo if set, else initials).
+function renderPmAvatar() {
+  var el = document.getElementById('pm-av-preview');
+  var rm = document.getElementById('pm-av-remove');
+  if (!el) return;
+  if (pmAvatar) {
+    el.textContent = '';
+    el.style.backgroundImage = 'url(' + pmAvatar + ')';
+    if (rm) rm.style.display = '';
+  } else {
+    el.style.backgroundImage = '';
+    var disp = document.getElementById('pm-display').value.trim() || userName || 'You';
+    var f = document.getElementById('pm-first').value.trim();
+    var l = document.getElementById('pm-last').value.trim();
+    var init = ((f.charAt(0) || '') + (l.charAt(0) || '')) || disp.slice(0,2);
+    el.textContent = init.toUpperCase();
+    if (rm) rm.style.display = 'none';
+  }
+}
+
+// Read a chosen image, center-crop to a square, downscale to 256px, store as JPEG.
+function onAvatarPick(e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      var size = 256;
+      var side = Math.min(img.width, img.height);
+      var sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+      var canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      try { pmAvatar = canvas.toDataURL('image/jpeg', 0.85); }
+      catch(err) { pmAvatar = ev.target.result; }
+      renderPmAvatar();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';   // let the same file be re-picked
+}
+
+function removeAvatar() {
+  pmAvatar = '';
+  renderPmAvatar();
 }
 
 function closeProfile() {
@@ -5660,6 +5740,7 @@ function saveProfile() {
   userLastName = last;
   userName = disp;
   userHandle = handle;
+  userAvatar = pmAvatar;
   saveState();
   applyUser();
   setProfileMsg('Saved.', true);
@@ -5743,6 +5824,7 @@ function startApp() {
     userHandle = user.handle || '';
     userFirstName = user.firstName || '';
     userLastName = user.lastName || '';
+    userAvatar = user.avatar || '';
     document.getElementById('onboarding').style.display = 'none';
     applyUser();
     renderChecklist();
