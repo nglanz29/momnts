@@ -1732,14 +1732,27 @@ function tabFromLocation() {
   return SLUG_TABS[slug] || 'home';
 }
 // Notify GTM/GA4 of a virtual pageview.
+// Non-tab screens (auth gate, onboarding, password reset) that also get their
+// own URL slug so GA4 can distinguish them from the app's home dashboard.
+var SCREEN_TITLES = { login:'Log In', signup:'Sign Up', 'reset-password':'Reset Password', welcome:'Welcome' };
+
 function trackPageView(path, id) {
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({
     event: 'spa_navigation',
     page_path: path,
     page_location: location.origin + path,
-    page_title: 'momnts — ' + (TAB_TITLES[id] || id)
+    page_title: 'momnts — ' + (TAB_TITLES[id] || SCREEN_TITLES[id] || id)
   });
+}
+
+// Point the URL at a non-tab screen slug (login/signup/reset-password/welcome)
+// without stacking history, and report the virtual pageview. No-op if already there.
+function setScreenUrl(slug) {
+  var path = appBase() + slug;
+  if (location.pathname === path) return;
+  try { history.replaceState({ screen: slug }, '', path); } catch(e){}
+  trackPageView(path, slug);
 }
 
 // Switch the visible tab + nav highlight + render (no history/GA side effects).
@@ -5581,6 +5594,7 @@ function obFinish() {
   saveState();
   renderFavNav();
   renderChecklist();
+  routeInitial();   // leave /app/welcome -> land on the home dashboard URL
 }
 
 // ── USER STATE ────────────────────────────────────────────────────────
@@ -5690,6 +5704,14 @@ function setAuthMode(mode) {
   var forgot = document.getElementById('auth-forgot');
   if (forgot) forgot.style.display = login ? 'block' : 'none';
   setAuthMsg('');
+  syncAuthUrl();
+}
+
+// Reflect login vs signup mode in the URL (only while the auth gate is showing).
+function syncAuthUrl() {
+  var gate = document.getElementById('auth-gate');
+  if (!gate || gate.classList.contains('hidden')) return;
+  setScreenUrl(authMode === 'signup' ? 'signup' : 'login');
 }
 
 function setAuthMsg(msg, ok) {
@@ -5704,6 +5726,9 @@ function showAuthGate() {
   if (img && !img.src) img.src = MOMNTS_LOGO;
   buildObBackground('auth-gate', 'auth-bg');   // reuse the blurred ticket/momnt reel collage
   document.getElementById('auth-gate').classList.remove('hidden');
+  // Give login/signup their own URL slug (honor a /app/signup deep link).
+  var cur = location.pathname.slice(appBase().length).replace(/\/+$/, '');
+  if (cur === 'signup') { setAuthMode('signup'); } else { syncAuthUrl(); }
 }
 
 function hideAuthGate() {
@@ -5782,6 +5807,7 @@ function showResetScreen() {
   var mv = document.getElementById('auth-main-view'); if (mv) mv.style.display = 'none';
   var rv = document.getElementById('auth-reset-view'); if (rv) rv.style.display = 'block';
   document.getElementById('auth-gate').classList.remove('hidden');
+  setScreenUrl('reset-password');
 }
 function submitNewPassword() {
   if (!supa) { setResetMsg('Account service unavailable — reload and try again.'); return; }
@@ -5990,6 +6016,7 @@ function startApp() {
     document.getElementById('ob-step-1').classList.remove('on');
     buildObBackground();
     document.getElementById('onboarding').style.display = 'flex';
+    setScreenUrl('welcome');
   } else {
     userName = user.name;
     userHandle = user.handle || '';
