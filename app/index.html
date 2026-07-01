@@ -658,6 +658,9 @@ textarea.mi{resize:none;height:68px;}
 .auth-or span{padding:0 12px;text-transform:uppercase;letter-spacing:.6px;}
 .auth-google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;border:none;border-radius:10px;padding:12px;color:#1f1f1f;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;}
 .auth-google:hover{background:#f1f1f1;}
+.auth-forgot{text-align:center;margin-top:12px;}
+.auth-forgot span{font-size:12px;color:var(--text3);cursor:pointer;}
+.auth-forgot span:hover{color:var(--text);text-decoration:underline;}
 
 /* PROFILE / ACCOUNT PANEL */
 .pm-overlay{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
@@ -698,6 +701,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div id="auth-gate" class="hidden">
   <div id="auth-box">
     <div id="auth-logo"><img id="auth-logo-img" alt="momnts" style="height:48px;width:auto;display:block;"></div>
+    <div id="auth-main-view">
     <div class="ob-title" id="auth-title">log in to momnts</div>
     <div class="ob-sub" id="auth-sub">Your games, stadiums, players, and momnts — saved to your account and synced to every device.</div>
     <div class="auth-tabs">
@@ -709,11 +713,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <input class="ob-input" id="auth-password2" type="password" placeholder="Confirm password" autocomplete="new-password" style="display:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();authSubmit();}">
     <div class="auth-msg" id="auth-msg"></div>
     <button class="ob-btn" id="auth-submit" type="button" onclick="authSubmit()">Log in →</button>
+    <div class="auth-forgot" id="auth-forgot"><span onclick="sendPasswordReset()">Forgot password?</span></div>
     <div class="auth-or"><span>or</span></div>
     <button class="auth-google" id="auth-google" type="button" onclick="signInWithGoogle()">
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
       Continue with Google
     </button>
+    </div><!-- /auth-main-view -->
+
+    <div id="auth-reset-view" style="display:none;">
+      <div class="ob-title">set a new password</div>
+      <div class="ob-sub">Almost there — choose a new password for your account.</div>
+      <input class="ob-input" id="reset-password" type="password" placeholder="New password" autocomplete="new-password" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('reset-password2').focus();}">
+      <input class="ob-input" id="reset-password2" type="password" placeholder="Confirm new password" autocomplete="new-password" onkeydown="if(event.key==='Enter'){event.preventDefault();submitNewPassword();}">
+      <div class="auth-msg" id="reset-msg"></div>
+      <button class="ob-btn" id="reset-submit" type="button" onclick="submitNewPassword()">Update password →</button>
+      <div class="auth-forgot"><span onclick="location.replace(window.location.origin+'/app/')">Back to log in</span></div>
+    </div>
   </div>
 </div>
 
@@ -5636,6 +5652,14 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 var supa = (window.supabase && window.supabase.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
+// Detect a password-recovery deep link synchronously, before supabase-js clears
+// the URL hash; also listen for the PASSWORD_RECOVERY event as a backstop.
+var _isPasswordRecovery = /[#&]type=recovery/.test(window.location.hash || '');
+if (supa) {
+  supa.auth.onAuthStateChange(function(event) {
+    if (event === 'PASSWORD_RECOVERY') { _isPasswordRecovery = true; hideAppLoading(); showResetScreen(); }
+  });
+}
 var userEmail = '';
 var userId = '';
 var authMode = 'login';
@@ -5650,6 +5674,8 @@ function setAuthMode(mode) {
   document.getElementById('auth-password').setAttribute('autocomplete', login ? 'current-password' : 'new-password');
   document.getElementById('auth-title').textContent = login ? 'log in to momnts' : 'create your account';
   document.getElementById('auth-submit').textContent = (login ? 'Log in' : 'Sign up') + ' →';
+  var forgot = document.getElementById('auth-forgot');
+  if (forgot) forgot.style.display = login ? 'block' : 'none';
   setAuthMsg('');
 }
 
@@ -5714,6 +5740,50 @@ function signInWithGoogle() {
   supa.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/app/' } })
     .then(function(res) { if (res && res.error) setAuthMsg(res.error.message); })
     .catch(function() { setAuthMsg('Could not start Google sign-in. Try again.'); });
+}
+
+// Send a password-reset email (from the login screen's "Forgot password?" link).
+function sendPasswordReset() {
+  if (!supa) { setAuthMsg('Account service unavailable — reload and try again.'); return; }
+  var email = document.getElementById('auth-email').value.trim();
+  if (!email || email.indexOf('@') < 1) { setAuthMsg('Enter your email above, then tap “Forgot password?”'); return; }
+  setAuthMsg('Sending a reset link…', true);
+  supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/app/' })
+    .then(function(res) {
+      if (res && res.error) { setAuthMsg(res.error.message); return; }
+      setAuthMsg('Check your email for a link to reset your password.', true);
+    })
+    .catch(function() { setAuthMsg('Could not send the reset email. Try again.'); });
+}
+
+// Set-a-new-password screen, shown after the user clicks the emailed reset link.
+function setResetMsg(msg, ok) {
+  var el = document.getElementById('reset-msg');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('ok', !!ok);
+}
+function showResetScreen() {
+  var img = document.getElementById('auth-logo-img'); if (img && !img.src) img.src = MOMNTS_LOGO;
+  buildObBackground('auth-gate', 'auth-bg');
+  var mv = document.getElementById('auth-main-view'); if (mv) mv.style.display = 'none';
+  var rv = document.getElementById('auth-reset-view'); if (rv) rv.style.display = 'block';
+  document.getElementById('auth-gate').classList.remove('hidden');
+}
+function submitNewPassword() {
+  if (!supa) { setResetMsg('Account service unavailable — reload and try again.'); return; }
+  var pw = document.getElementById('reset-password').value;
+  var pw2 = document.getElementById('reset-password2').value;
+  if (pw.length < 6) { setResetMsg('Password must be at least 6 characters.'); return; }
+  if (pw !== pw2) { setResetMsg('Those passwords don’t match.'); return; }
+  var btn = document.getElementById('reset-submit'); btn.disabled = true;
+  setResetMsg('Updating your password…', true);
+  supa.auth.updateUser({ password: pw }).then(function(res) {
+    btn.disabled = false;
+    if (res && res.error) { setResetMsg(res.error.message); return; }
+    setResetMsg('Password updated — signing you in…', true);
+    setTimeout(function() { location.replace(window.location.origin + '/app/'); }, 1200);
+  }).catch(function() { btn.disabled = false; setResetMsg('Could not update password. Try again.'); });
 }
 
 function signOut() {
@@ -5868,6 +5938,7 @@ function enterApp(session) {
 
 // Decide what to show on load: the app if a session exists, otherwise the login gate.
 function bootAuth() {
+  if (_isPasswordRecovery) { hideAppLoading(); showResetScreen(); return; }   // returned from a reset-password link
   if (!supa) { hideAppLoading(); startApp(); return; }   // SDK failed to load -> degrade to local-only
   supa.auth.getSession().then(function(res) {
     var session = res && res.data && res.data.session;
