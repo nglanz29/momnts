@@ -629,6 +629,11 @@ textarea.mi{resize:none;height:68px;}
 .sp-l{background:var(--loss);color:var(--loss-text);}
 .sp-future{background:var(--bg4);color:var(--text3);}
 
+/* APP LOADING OVERLAY */
+#app-loading{position:fixed;inset:0;z-index:9700;background:var(--ink);display:flex;align-items:center;justify-content:center;}
+#app-loading.hidden{display:none;}
+.al-text{font-size:13px;color:var(--text3);letter-spacing:.3px;text-align:center;}
+
 /* AUTH GATE (login / signup) */
 #auth-gate{position:fixed;inset:0;z-index:9000;background:var(--ink);display:flex;align-items:center;justify-content:center;overflow-y:auto;}
 #auth-gate.hidden{display:none;}
@@ -658,8 +663,16 @@ textarea.mi{resize:none;height:68px;}
 </head>
 <body>
 
+<!-- APP LOADING (covers first paint + initial cloud fetch) -->
+<div id="app-loading">
+  <div class="al-inner">
+    <img id="al-logo-img" alt="momnts" style="height:38px;width:auto;display:block;margin:0 auto 16px;opacity:.9;">
+    <div class="al-text">loading your collection…</div>
+  </div>
+</div>
+
 <!-- AUTH GATE (login / signup) -->
-<div id="auth-gate">
+<div id="auth-gate" class="hidden">
   <div id="auth-box">
     <div id="auth-logo"><img id="auth-logo-img" alt="momnts" style="height:48px;width:auto;display:block;"></div>
     <div class="ob-title" id="auth-title">log in to momnts</div>
@@ -5161,8 +5174,10 @@ function resetApp() {
 }
 
 // ── DATA BACKUP: export everything to a JSON file ────────────────────
-function exportData() {
-  var payload = {
+// Serialize the whole app state into one JSON bundle (used by export, backup,
+// and cloud sync). This is the single source-of-truth shape for a user's data.
+function buildBundle() {
+  return {
     _app: 'momnts',
     _version: 1,
     _exported: new Date().toISOString(),
@@ -5175,6 +5190,26 @@ function exportData() {
     players: playerList,
     moments: savedMoments
   };
+}
+
+// Write a bundle's pieces into localStorage (each under its gd_ key). loadState()
+// then reads them back into memory with the usual migrations. Used to hydrate the
+// device from cloud data on login. No-op guard on a missing/blank bundle.
+function hydrateLocalFromBundle(b) {
+  if (!b || !Array.isArray(b.games)) return false;
+  LS.save('user', b.user || { name: '', handle: '' });
+  LS.save('favs', b.favs || []);
+  LS.save('games', b.games || []);
+  LS.save('visited', b.visited || []);
+  LS.save('bucketList', b.bucketList || []);
+  LS.save('checklist', b.checklist || [false,false,false,false,false]);
+  LS.save('players', b.players || []);
+  LS.save('moments', b.moments || []);
+  return true;
+}
+
+function exportData() {
+  var payload = buildBundle();
   var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
@@ -5257,6 +5292,7 @@ function saveState() {
   LS.save('players', playerList);
   LS.save('moments', savedMoments);
   LS.save('bucketList', [...bucketList]);
+  cloudSave();   // debounced push to Supabase when logged in (no-op otherwise)
 }
 
 function loadState() {
@@ -5486,7 +5522,9 @@ var supa = (window.supabase && window.supabase.createClient)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 var userEmail = '';
+var userId = '';
 var authMode = 'login';
+var _cloudTimer = null;
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -5546,12 +5584,9 @@ function authSubmit() {
 }
 
 function onAuthSuccess(session) {
-  if (session && session.user) userEmail = session.user.email || '';
-  setAuthMsg('');
   document.getElementById('auth-password').value = '';
   var p2 = document.getElementById('auth-password2'); if (p2) p2.value = '';
-  hideAuthGate();
-  startApp();
+  enterApp(session);
 }
 
 function signOut() {
@@ -5598,19 +5633,68 @@ function saveProfile() {
   setTimeout(closeProfile, 700);
 }
 
+// Full-screen loading overlay: covers first paint + the initial cloud fetch.
+function showAppLoading() { var el = document.getElementById('app-loading'); if (el) el.classList.remove('hidden'); }
+function hideAppLoading() { var el = document.getElementById('app-loading'); if (el) el.classList.add('hidden'); }
+
+// ── CLOUD SYNC (one Supabase app_state row per user) ──────────────────
+// Pull this user's saved bundle from the cloud into localStorage, then continue.
+// If the row is missing/blank (brand-new account) local data is left untouched.
+function cloudLoad(done) {
+  if (!supa || !userId) { done(false); return; }
+  supa.from('app_state').select('data').eq('user_id', userId).maybeSingle().then(function(res) {
+    var had = false;
+    if (!res.error && res.data && res.data.data) { had = hydrateLocalFromBundle(res.data.data); }
+    done(had);   // had = cloud row existed with real data
+  }).catch(function() { done(false); });
+}
+
+// Debounced push of the whole bundle to the cloud (called from saveState()).
+function cloudSave() {
+  if (!supa || !userId) return;              // not logged in -> local-only
+  if (_cloudTimer) clearTimeout(_cloudTimer);
+  _cloudTimer = setTimeout(cloudSaveNow, 800);
+}
+function cloudSaveNow() {
+  _cloudTimer = null;
+  if (!supa || !userId) return;
+  supa.from('app_state').upsert({ user_id: userId, data: buildBundle(), updated_at: new Date().toISOString() })
+    .then(function(res) { if (res && res.error) { try { console.warn('momnts cloud save failed:', res.error.message); } catch(e){} } })
+    .catch(function() {});
+}
+// Flush any pending debounced save when the tab is hidden/closed, so a quick
+// edit-then-leave doesn't get stranded locally.
+window.addEventListener('pagehide', function() { if (_cloudTimer) cloudSaveNow(); });
+document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden' && _cloudTimer) cloudSaveNow(); });
+
+// After auth (fresh login or a restored session): capture identity, pull cloud
+// data into localStorage, then render. The loading overlay stays up until the
+// data is in place so we never flash empty/onboarding before it arrives.
+function enterApp(session) {
+  if (session && session.user) { userEmail = session.user.email || ''; userId = session.user.id || ''; }
+  setAuthMsg('');
+  showAppLoading();
+  cloudLoad(function(hadCloudData) {
+    hideAuthGate();
+    hideAppLoading();
+    startApp();
+    // First-login migration: if the cloud had nothing yet but this device already
+    // has data, seed the account with it. Guarded on !hadCloudData so it can never
+    // overwrite an existing cloud bundle.
+    if (!hadCloudData && (savedGames.length || savedMoments.length || favs.size || visitedStadiums.size || bucketList.size)) {
+      cloudSaveNow();
+    }
+  });
+}
+
 // Decide what to show on load: the app if a session exists, otherwise the login gate.
 function bootAuth() {
-  if (!supa) { hideAuthGate(); startApp(); return; }   // SDK failed to load -> degrade to local-only
+  if (!supa) { hideAppLoading(); startApp(); return; }   // SDK failed to load -> degrade to local-only
   supa.auth.getSession().then(function(res) {
     var session = res && res.data && res.data.session;
-    if (session) {
-      if (session.user) userEmail = session.user.email || '';
-      hideAuthGate();
-      startApp();
-    } else {
-      showAuthGate();
-    }
-  }).catch(function() { showAuthGate(); });
+    if (session) { enterApp(session); }
+    else { hideAppLoading(); showAuthGate(); }
+  }).catch(function() { hideAppLoading(); showAuthGate(); });
 }
 
 // Load saved data and render the app (or onboarding for a brand-new profile).
@@ -5647,6 +5731,8 @@ function startApp() {
   if (mobileLogoImg) mobileLogoImg.src = MOMNTS_LOGO;
   var authLogoImg = document.getElementById('auth-logo-img');
   if (authLogoImg) authLogoImg.src = MOMNTS_LOGO;
+  var alLogoImg = document.getElementById('al-logo-img');
+  if (alLogoImg) alLogoImg.src = MOMNTS_LOGO;
   // Embed the wordmark once as the ticket-stub counterfoil logo (avoids repeating
   // the base64 data URI in every rendered ticket).
   var tkLogoStyle = document.createElement('style');
