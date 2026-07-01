@@ -802,13 +802,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <header class="mobile-header">
   <button class="hamburger" onclick="toggleNav()" aria-label="Open menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-  <img id="mobile-logo-img" alt="momnts" style="height:24px;width:auto;display:block;">
+  <img id="mobile-logo-img" alt="momnts home" onclick="go('home')" style="height:24px;width:auto;display:block;cursor:pointer;">
 </header>
 <div class="nav-backdrop" onclick="closeNav()"></div>
 
 <nav class="sidebar">
-  <div class="slogo">
-    <img id="slogo-img" alt="momnts" style="height:30px;width:auto;display:block;">
+  <div class="slogo" onclick="go('home');closeNav()" style="cursor:pointer;">
+    <img id="slogo-img" alt="momnts home" style="height:30px;width:auto;display:block;">
   </div>
   <div class="snl">main</div>
   <button class="ni on" onclick="go('home',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>home</button>
