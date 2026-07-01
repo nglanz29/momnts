@@ -661,6 +661,12 @@ textarea.mi{resize:none;height:68px;}
 .auth-forgot{text-align:center;margin-top:12px;}
 .auth-forgot span{font-size:12px;color:var(--text3);cursor:pointer;}
 .auth-forgot span:hover{color:var(--text);text-decoration:underline;}
+/* Footers on the auth gate + app */
+.site-foot{margin-top:44px;padding:20px 0 4px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);}
+.auth-foot{position:absolute;bottom:16px;left:0;right:0;z-index:3;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text3);padding:0 16px;}
+.site-foot a,.auth-foot a{color:var(--text3);text-decoration:none;}
+.site-foot a:hover,.auth-foot a:hover{color:var(--text);}
+.site-foot .dot,.auth-foot .dot{opacity:.45;}
 
 /* PROFILE / ACCOUNT PANEL */
 .pm-overlay{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
@@ -700,7 +706,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- AUTH GATE (login / signup) -->
 <div id="auth-gate" class="hidden">
   <div id="auth-box">
-    <div id="auth-logo"><img id="auth-logo-img" alt="momnts" style="height:48px;width:auto;display:block;"></div>
+    <div id="auth-logo"><a href="/" aria-label="momnts home" style="line-height:0;"><img id="auth-logo-img" alt="momnts home" style="height:48px;width:auto;display:block;"></a></div>
     <div id="auth-main-view">
     <div class="ob-title" id="auth-title">log in to momnts</div>
     <div class="ob-sub" id="auth-sub">Your games, stadiums, players, and momnts — saved to your account and synced to every device.</div>
@@ -730,6 +736,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="ob-btn" id="reset-submit" type="button" onclick="submitNewPassword()">Update password →</button>
       <div class="auth-forgot"><span onclick="location.replace(window.location.origin+'/app/')">Back to log in</span></div>
     </div>
+  </div>
+  <div class="auth-foot">
+    <a href="/">Home</a><span class="dot">·</span><a href="/privacy.html">Privacy</a><span class="dot">·</span><span>© 2026 momnts</span>
   </div>
 </div>
 
@@ -1065,6 +1074,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </div>
 </div>
+
+<footer class="site-foot">
+  <a href="/">Home</a><span class="dot">·</span><a href="/privacy.html" target="_blank" rel="noopener">Privacy</a><span class="dot">·</span><span>© 2026 momnts</span>
+</footer>
 
 </main>
 </div>
