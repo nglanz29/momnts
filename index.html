@@ -32,7 +32,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;overflow-x:clip}
 body{margin:0;background:#0D0E10;color:#EEF0EE;font-family:'JetBrains Mono',monospace;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit}
 .container{max-width:1280px;margin:0 auto;padding:0 36px}
@@ -78,11 +78,16 @@ a{color:inherit}
 @media (max-width:560px){
   .container{padding:0 20px}
   .hero-h1{font-size:35px !important}
+  .hero-lead{font-size:15px !important}
   .vault-extra{display:none}
   .hero-reel:nth-child(n+3){display:none}
   .steps-grid{grid-template-columns:1fr}
   .vault-h2{font-size:26px !important}
   .sec-h2{font-size:28px !important}
+  /* keep the rotated/offset hero visuals from pushing the page wider than the phone */
+  .hero-col{max-width:100%}
+  #heroStub{transform:rotate(-2deg) scale(.92) !important;transform-origin:top center}
+  #heroCard{transform:rotate(2.5deg) scale(.9) !important;transform-origin:top center}
 }
 </style>
 </head>
