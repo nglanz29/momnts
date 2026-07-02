@@ -84,10 +84,11 @@ a{color:inherit}
   .steps-grid{grid-template-columns:1fr}
   .vault-h2{font-size:26px !important}
   .sec-h2{font-size:28px !important}
-  /* keep the rotated/offset hero visuals from pushing the page wider than the phone */
+  /* On phones show only the (portrait, 340px) momnt card — the wide ~460px ticket
+     stub can't fit and gets clipped; the stub concept is featured in section 01 below. */
   .hero-col{max-width:100%}
-  #heroStub{transform:rotate(-2deg) scale(.92) !important;transform-origin:top center}
-  #heroCard{transform:rotate(2.5deg) scale(.9) !important;transform-origin:top center}
+  #heroStub{display:none !important}
+  #heroCard{transform:rotate(2deg) scale(.96) !important;transform-origin:top center;margin:0 auto}
 }
 </style>
 </head>
