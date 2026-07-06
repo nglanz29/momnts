@@ -45,10 +45,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;}
 .slogo{padding:18px 20px;display:flex;align-items:center;border-bottom:1px solid var(--border);}
 .snl{font-family:var(--font-ui);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);padding:14px 20px 5px;}
-.ni{display:flex;align-items:center;gap:10px;padding:9px 20px;font-family:var(--font-ui);font-size:12.5px;color:var(--text2);cursor:pointer;border-left:2px solid transparent;transition:all .15s;user-select:none;border-top:none;border-right:none;border-bottom:none;background:none;width:100%;text-align:left;}
-.ni:hover{color:var(--text);background:rgba(255,255,255,.03);}
+.ni,.ni-social{display:flex;align-items:center;gap:10px;padding:9px 20px;font-family:var(--font-ui);font-size:12.5px;color:var(--text2);cursor:pointer;border-left:2px solid transparent;transition:all .15s;user-select:none;border-top:none;border-right:none;border-bottom:none;background:none;width:100%;text-align:left;}
+.ni:hover,.ni-social:hover{color:var(--text);background:rgba(255,255,255,.03);}
 .ni.on{color:var(--signal);background:rgba(31,181,116,.08);border-left-color:var(--signal);}
-.ni svg,.ni img{width:16px;height:16px;flex-shrink:0;opacity:.7;object-fit:contain;}
+.ni svg,.ni img,.ni-social svg{width:16px;height:16px;flex-shrink:0;opacity:.7;object-fit:contain;}
 .ni.on svg,.ni.on img{opacity:1;}
 .sbottom{margin-top:auto;padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
 .avatar{width:30px;height:30px;border-radius:50%;background:#3a3a5c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#aaa8f0;flex-shrink:0;}
@@ -690,6 +690,22 @@ textarea.mi{resize:none;height:68px;}
 .pm-av-remove:hover{color:#ff6b6b;}
 .pm-signout{width:100%;background:none;border:1px solid var(--border2);border-radius:10px;padding:11px;color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:10px;}
 .pm-signout:hover{border-color:#ff6b6b;color:#ff6b6b;}
+/* Find-people search modal */
+.pr-search-wrap{position:relative;margin-bottom:8px;}
+.pr-search{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 12px 11px 36px;color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box;}
+.pr-search:focus{outline:none;border-color:var(--accent);}
+.pr-search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;}
+.pr-list{margin-top:6px;max-height:52vh;overflow-y:auto;}
+.pr-row{display:flex;align-items:center;gap:12px;padding:9px 8px;border-radius:10px;transition:background .12s;}
+.pr-row:hover{background:rgba(255,255,255,.04);}
+.pr-av{width:42px;height:42px;border-radius:50%;background:var(--bg4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:var(--text2);background-size:cover;background-position:center;overflow:hidden;}
+.pr-meta{flex:1;min-width:0;}
+.pr-name{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pr-lock{color:var(--text3);flex-shrink:0;}
+.pr-handle{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pr-stats{font-size:11px;color:var(--text3);margin-top:2px;}
+.pr-action{flex-shrink:0;}
+.pr-note{font-size:13px;color:var(--text3);text-align:center;padding:22px 8px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -776,6 +792,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
+<!-- FIND PEOPLE (user search) -->
+<div id="people-modal" class="pm-overlay" onclick="if(event.target===this)closePeople()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title">Find people</div>
+      <button class="pm-x" type="button" onclick="closePeople()" aria-label="Close">&times;</button>
+    </div>
+    <div class="pr-search-wrap">
+      <span class="pr-search-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg></span>
+      <input class="pr-search" id="pr-input" type="text" placeholder="Search by name or @username" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onPeopleInput()">
+    </div>
+    <div class="pr-list" id="pr-list"></div>
+  </div>
+</div>
+
 <!-- ONBOARDING OVERLAY -->
 <div id="onboarding">
   <div id="ob-box">
@@ -830,6 +861,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="ni" onclick="go('players',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>players seen</button>
   <button class="ni" onclick="go('moments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>momnts</button>
   <button class="ni" onclick="go('myteams',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>my teams</button>
+  <div class="snl">social</div>
+  <button class="ni-social" onclick="openPeople();closeNav()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>find people</button>
   <div class="sbottom">
     <div class="avatar" id="sb-avatar" onclick="openProfile()" style="cursor:pointer;" title="Account">?</div>
     <div style="flex:1;cursor:pointer;" onclick="openProfile()" title="Account"><div style="font-size:13px;font-weight:600;" id="sb-name">You</div><div style="font-size:11px;color:var(--text3);" id="sb-gamecount">0 games</div></div>
@@ -5697,6 +5730,7 @@ var userId = '';
 var authMode = 'login';
 var _cloudTimer = null;
 var _profileTimer = null;   // debounce for public-profile row sync
+var _peopleTimer = null;    // debounce for user search
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -6067,6 +6101,86 @@ function syncProfileSoon() {
   if (!supa || !userId) return;
   if (_profileTimer) clearTimeout(_profileTimer);
   _profileTimer = setTimeout(syncProfile, 1200);
+}
+
+// ── SOCIAL: find people (search public profiles) ──────────────────────
+function openPeople() {
+  var m = document.getElementById('people-modal');
+  if (!m) return;
+  m.classList.add('on');
+  var inp = document.getElementById('pr-input');
+  if (inp) { inp.value = ''; setTimeout(function(){ inp.focus(); }, 60); }
+  peopleNote('Search for other momnts collectors by name or @username.');
+}
+function closePeople() {
+  var m = document.getElementById('people-modal');
+  if (m) m.classList.remove('on');
+  if (_peopleTimer) { clearTimeout(_peopleTimer); _peopleTimer = null; }
+}
+function peopleNote(msg) {
+  var list = document.getElementById('pr-list');
+  if (list) list.innerHTML = '<div class="pr-note">' + escMomnt(msg) + '</div>';
+}
+
+// Debounced input handler on the search box.
+function onPeopleInput() {
+  if (_peopleTimer) clearTimeout(_peopleTimer);
+  _peopleTimer = setTimeout(runPeopleSearch, 280);
+}
+
+// Query public.profiles by username OR display name (case-insensitive), newest
+// stats first, excluding yourself. RLS already restricts this to logged-in users.
+function runPeopleSearch() {
+  var inp = document.getElementById('pr-input');
+  var raw = inp ? inp.value : '';
+  // Keep only characters that are safe inside a PostgREST or() filter value
+  // (strip commas/parens/wildcards that would break the filter grammar).
+  var q = raw.toLowerCase().replace(/[^a-z0-9_ ]/g, '').trim();
+  if (q.length < 1) { peopleNote('Search for other momnts collectors by name or @username.'); return; }
+  if (!supa || !userId) { peopleNote('Sign in to search for people.'); return; }
+  peopleNote('Searching…');
+  var pattern = '%' + q + '%';
+  supa.from('profiles')
+    .select('user_id,username,display_name,avatar,is_private,games_count,momnts_count')
+    .or('username.ilike.' + pattern + ',display_name.ilike.' + pattern)
+    .neq('user_id', userId)
+    .limit(25)
+    .then(function(res) {
+      if (res && res.error) { peopleNote('Couldn’t search right now — try again.'); try { console.warn('momnts people search failed:', res.error.message); } catch (e) {} return; }
+      renderPeopleResults((res && res.data) || [], q);
+    })
+    .catch(function() { peopleNote('Couldn’t search right now — try again.'); });
+}
+
+function renderPeopleResults(list, q) {
+  var el = document.getElementById('pr-list');
+  if (!el) return;
+  if (!list.length) { peopleNote('No one found for “' + q + '”.'); return; }
+  el.innerHTML = list.map(peopleRowHTML).join('');
+}
+
+function peopleRowHTML(p) {
+  var name = escMomnt(p.display_name || p.username || 'momnts fan');
+  var handle = escMomnt('@' + (p.username || ''));
+  var av;
+  if (p.avatar) {
+    av = '<div class="pr-av" style="background-image:url(' + p.avatar + ')"></div>';
+  } else {
+    var src = (p.display_name || p.username || '?');
+    av = '<div class="pr-av">' + escMomnt(src.slice(0, 2).toUpperCase()) + '</div>';
+  }
+  var g = p.games_count || 0, m = p.momnts_count || 0;
+  var stats = g + (g === 1 ? ' game' : ' games') + ' · ' + m + (m === 1 ? ' momnt' : ' momnts');
+  var lock = p.is_private
+    ? '<span class="pr-lock" title="Private"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></span>'
+    : '';
+  return '<div class="pr-row">'
+    + av
+    + '<div class="pr-meta"><div class="pr-name">' + name + lock + '</div>'
+    + '<div class="pr-handle">' + handle + '</div>'
+    + '<div class="pr-stats">' + stats + '</div></div>'
+    + '<div class="pr-action" id="pr-act-' + p.user_id + '"></div>'
+    + '</div>';
 }
 
 // After auth (fresh login or a restored session): capture identity, pull cloud
