@@ -3856,8 +3856,9 @@ function momntCardHTML(m) {
     + (game && game.seat ? '<div><span class="k">SEAT</span><span>'+escMomnt(game.seat).toUpperCase()+'</span></div>' : '')
     + '<div><span class="k">PINNED</span>'+pinAct+'</div></div>';
   var gameAct = m.gameId ? '<button onclick="openMomntGame(\''+m.gameId+'\',event)">↗ GAME</button>' : '';
+  var tagAct = '<button onclick="event.stopPropagation();tagMomnt(\''+m.id+'\')">⊕ TAG</button>';
   var delAct = m.gameId ? '' : '<button onclick="deleteMoment(\''+m.id+'\',event)">× DELETE</button>';
-  var actsRow = (gameAct || delAct) ? '<div class="mvc-bact" style="margin-top:2px;">'+gameAct+delAct+'</div>' : '';
+  var actsRow = '<div class="mvc-bact" style="margin-top:2px;">'+gameAct+tagAct+delAct+'</div>';
 
   var back = '<div class="mvc-face mvc-back"><div class="mvc-bscan"></div><div class="mvc-bcontent">'
     + '<div class="mvc-row"><div class="mvc-bbadge">'+escMomnt(meta.label)+'</div>'+(no?'<div class="mvc-no">MOMNTS<br>'+no+'</div>':'')+'</div>'
