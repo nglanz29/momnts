@@ -5440,7 +5440,8 @@ function saveState() {
   LS.save('players', playerList);
   LS.save('moments', savedMoments);
   LS.save('bucketList', [...bucketList]);
-  cloudSave();   // debounced push to Supabase when logged in (no-op otherwise)
+  cloudSave();       // debounced push to Supabase when logged in (no-op otherwise)
+  syncProfileSoon(); // keep the public profile row (name/avatar/stats) in sync
 }
 
 function loadState() {
@@ -5695,6 +5696,7 @@ var userEmail = '';
 var userId = '';
 var authMode = 'login';
 var _cloudTimer = null;
+var _profileTimer = null;   // debounce for public-profile row sync
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -5975,6 +5977,98 @@ function cloudSaveNow() {
 window.addEventListener('pagehide', function() { if (_cloudTimer) cloudSaveNow(); });
 document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden' && _cloudTimer) cloudSaveNow(); });
 
+// ── SOCIAL: public profile row (public.profiles) ──────────────────────
+// One row per user, holding the searchable/public-facing bits: @username,
+// display name, avatar, and high-level stats (games, momnts, fav teams).
+// Auto-created from the local profile on first social login (this is also how
+// existing users get ported into the social system) and kept in sync on save.
+var RESERVED_HANDLES = ['admin','momnts','support','help','about','root','system','moderator','staff'];
+
+// Turn any handle/name into a legal username: lowercase, only a-z0-9_, <=20 chars.
+function sanitizeUsername(raw) {
+  return String(raw || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
+}
+
+// High-level stats snapshot for the public profile (never actual game data).
+function profileStats() {
+  var favTeams = [];
+  ['mlb','nfl','nba','nhl'].forEach(function(sp) {
+    (TEAMS[sp] || []).forEach(function(t) {
+      if (favs.has(t.id)) favTeams.push({ id: t.id, name: t.name, city: t.city, logo: t.logo, league: sp.toUpperCase() });
+    });
+  });
+  return { games_count: savedGames.length, momnts_count: savedMoments.length, fav_teams: favTeams };
+}
+
+// Pick a starting username for a brand-new profile row: prefer the user's chosen
+// handle, then display name, then email local-part, then a generic fallback.
+function baseUsername() {
+  var base = sanitizeUsername(userHandle) || sanitizeUsername(userName)
+          || sanitizeUsername((userEmail || '').split('@')[0]) || 'fan';
+  if (base.length < 3) base = (base + 'fan').slice(0, 20);        // pad handles under 3 chars
+  if (RESERVED_HANDLES.indexOf(base) !== -1) base = base + '1';
+  return base;
+}
+
+// Insert a fresh profile row. On a username collision (unique index on
+// lower(username)) append a random number and retry a few times.
+function insertProfile(base, username, stats, attempt) {
+  supa.from('profiles').insert({
+    user_id: userId,
+    username: username,
+    display_name: userName || null,
+    avatar: userAvatar || null,
+    is_private: false,
+    games_count: stats.games_count,
+    momnts_count: stats.momnts_count,
+    fav_teams: stats.fav_teams
+  }).then(function(res) {
+    if (res && res.error) {
+      var dup = res.error.code === '23505' || /duplicate|unique/i.test(res.error.message || '');
+      if (dup && attempt < 6) {
+        var suffix = String(Math.floor(Math.random() * 9000) + 1000);
+        var next = base.slice(0, 20 - suffix.length) + suffix;
+        insertProfile(base, next, stats, attempt + 1);
+      } else {
+        try { console.warn('momnts profile create failed:', res.error.message); } catch (e) {}
+      }
+    }
+  }).catch(function() {});
+}
+
+// Create or update this user's public profile row. Username + is_private are
+// owned by the user once set, so an existing row only has its display name,
+// avatar, and stats refreshed — never its handle or privacy flag.
+function syncProfile() {
+  if (!supa || !userId || !userName) return;   // wait until onboarding has set a name
+  var stats = profileStats();
+  supa.from('profiles').select('user_id').eq('user_id', userId).maybeSingle().then(function(res) {
+    if (res && res.error) { try { console.warn('momnts profile lookup failed:', res.error.message); } catch (e) {} return; }
+    if (res && res.data) {
+      supa.from('profiles').update({
+        display_name: userName || null,
+        avatar: userAvatar || null,
+        games_count: stats.games_count,
+        momnts_count: stats.momnts_count,
+        fav_teams: stats.fav_teams,
+        updated_at: new Date().toISOString()
+      }).eq('user_id', userId)
+        .then(function(r) { if (r && r.error) { try { console.warn('momnts profile update failed:', r.error.message); } catch (e) {} } })
+        .catch(function() {});
+    } else {
+      var base = baseUsername();
+      insertProfile(base, base, stats, 0);
+    }
+  }).catch(function() {});
+}
+
+// Debounced profile sync (called from saveState so stats/name/avatar stay fresh).
+function syncProfileSoon() {
+  if (!supa || !userId) return;
+  if (_profileTimer) clearTimeout(_profileTimer);
+  _profileTimer = setTimeout(syncProfile, 1200);
+}
+
 // After auth (fresh login or a restored session): capture identity, pull cloud
 // data into localStorage, then render. The loading overlay stays up until the
 // data is in place so we never flash empty/onboarding before it arrives.
@@ -5998,6 +6092,7 @@ function enterApp(session) {
       cloudSaveNow();
     }
     LS.save('owner', userId);   // tag this browser's cache as owned by the current account
+    syncProfile();   // create the public profile row on first social login (ports existing users), or refresh it
   });
 }
 
