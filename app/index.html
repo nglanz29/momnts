@@ -6047,18 +6047,36 @@ function saveProfile() {
   var first = document.getElementById('pm-first').value.trim();
   var last = document.getElementById('pm-last').value.trim();
   var disp = document.getElementById('pm-display').value.trim() || first;
-  var handle = document.getElementById('pm-handle').value.trim().replace(/^@+/, '');
+  var raw = document.getElementById('pm-handle').value.trim().replace(/^@+/, '');
   if (!disp) { setProfileMsg('Add a display name (or a first name).'); return; }
-  if (!handle) handle = disp.toLowerCase().replace(/[^a-z0-9]/g, '');
+  // Normalize the @handle to the username rules (a–z, 0–9, _, 3–20 chars).
+  var handle = sanitizeUsername(raw) || sanitizeUsername(disp);
+  if (handle.length < 3) { setProfileMsg('Username needs 3+ letters/numbers (a–z, 0–9, _).'); return; }
+  if (RESERVED_HANDLES.indexOf(handle) !== -1) { setProfileMsg('That username is reserved — pick another.'); return; }
+  // Save the non-handle fields locally right away.
   userFirstName = first;
   userLastName = last;
   userName = disp;
-  userHandle = handle;
   userAvatar = pmAvatar;
-  saveState();
-  applyUser();
-  setProfileMsg('Saved.', true);
-  setTimeout(closeProfile, 700);
+  // Helper to commit the handle locally + persist + close.
+  var finish = function() { userHandle = handle; saveState(); applyUser(); setProfileMsg('Saved.', true); setTimeout(closeProfile, 700); };
+  // If the handle is unchanged, or we're offline/local-only, just save.
+  if (handle === userHandle || !supa || !userId) { finish(); return; }
+  // Handle changed → write it to profiles.username first so search works, and so
+  // we can catch a collision (unique index on lower(username)) before adopting it.
+  setProfileMsg('Saving…', true);
+  supa.from('profiles').update({ username: handle, updated_at: new Date().toISOString() }).eq('user_id', userId).select('username').maybeSingle()
+    .then(function(res) {
+      if (res && res.error) {
+        var taken = res.error.code === '23505' || /duplicate|unique/i.test(res.error.message || '');
+        // Keep the display/avatar changes (already set), but don't adopt a taken handle.
+        saveState(); applyUser();
+        setProfileMsg(taken ? 'That @handle is taken — try another.' : 'Couldn’t save your @handle — try again.');
+        return;
+      }
+      finish();   // update succeeded (or the row will be created by syncProfile with this handle)
+    })
+    .catch(function() { saveState(); applyUser(); setProfileMsg('Couldn’t save your @handle — try again.'); });
 }
 
 // Full-screen loading overlay: covers first paint + the initial cloud fetch.
@@ -6734,7 +6752,18 @@ function acceptGameSnapshot(s) {
     players: Array.isArray(s.players) ? s.players.slice() : []
   };
   canonicalGame(game);   // normalizes home/away + re-picks a fav as myTeam if present
-  game.result = computeMyResult(game);
+  // If neither team is one of YOUR favorites, you were there but had no side —
+  // mark it neutral so it doesn't show a misleading win/loss from the tagger's game.
+  var allTeams = [].concat(TEAMS.mlb, TEAMS.nfl, TEAMS.nba, TEAMS.nhl);
+  var favNames = allTeams.filter(function(t) { return favs.has(t.id); }).map(function(t) { return t.city + ' ' + t.name; });
+  var hasFavInGame = favNames.some(function(n) {
+    var last = n.split(' ').pop();
+    return n === game.homeTeam || n === game.awayTeam
+      || (game.homeTeam && game.homeTeam.indexOf(last) > -1)
+      || (game.awayTeam && game.awayTeam.indexOf(last) > -1);
+  });
+  if (!hasFavInGame) game.neutral = true;
+  game.result = computeMyResult(game);   // '' when neutral
   savedGames.unshift(game);
   if (game.pinId) {
     var pin = PINS.find(function(p) { return p[0] === game.pinId; });
