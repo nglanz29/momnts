@@ -736,6 +736,17 @@ textarea.mi{resize:none;height:68px;}
 .pv-team{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 12px 5px 6px;font-size:12px;font-weight:600;}
 .pv-team img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
 .pv-empty-teams{font-size:12px;color:var(--text3);}
+/* Tag composer + tag inbox */
+.tg-what{font-size:13px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-bottom:4px;line-height:1.4;}
+.tg-note{width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:56px;}
+.tg-note:focus{outline:none;border-color:var(--accent);}
+.tg-row{cursor:pointer;}
+.tg-cb{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.tg-row.on .tg-cb{background:var(--accent);border-color:var(--accent);}
+.tg-cb svg{opacity:0;}
+.tg-row.on .tg-cb svg{opacity:1;}
+.pr-preview{font-size:12px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pr-note-txt{font-size:12px;color:var(--text2);margin-top:3px;font-style:italic;}
 </style>
 </head>
 <body>
@@ -832,6 +843,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="pr-tabs">
       <button class="pr-tab on" id="pr-tab-search" type="button" onclick="peopleTab('search')">Search</button>
       <button class="pr-tab" id="pr-tab-req" type="button" onclick="peopleTab('requests')">Requests<span class="pr-badge" id="pr-req-badge" style="display:none;">0</span></button>
+      <button class="pr-tab" id="pr-tab-tags" type="button" onclick="peopleTab('tags')">Tags<span class="pr-badge" id="pr-tag-badge" style="display:none;">0</span></button>
     </div>
     <div id="pr-search-panel">
       <div class="pr-search-wrap">
@@ -843,6 +855,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="pr-requests-panel" style="display:none;">
       <div class="pr-list" id="pr-req-list"></div>
     </div>
+    <div id="pr-tags-panel" style="display:none;">
+      <div class="pr-list" id="pr-tag-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAG A FRIEND (composer) -->
+<div id="tag-modal" class="pm-overlay" onclick="if(event.target===this)closeTagComposer()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title">Tag a friend</div>
+      <button class="pm-x" type="button" onclick="closeTagComposer()" aria-label="Close">&times;</button>
+    </div>
+    <div class="tg-what" id="tg-what">—</div>
+    <label class="pm-label">Who were you with?</label>
+    <div class="pr-list" id="tg-people" style="max-height:34vh;"></div>
+    <label class="pm-label">Add a note (optional)</label>
+    <textarea class="tg-note" id="tg-note" maxlength="140" placeholder="e.g. what a night — remember this one?"></textarea>
+    <div class="auth-msg" id="tg-msg" style="min-height:0;margin-bottom:2px;"></div>
+    <button class="ob-btn" type="button" id="tg-send" onclick="sendTags()">Send tag</button>
   </div>
 </div>
 
@@ -1272,6 +1304,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div style="overflow-y:auto;flex:1;padding:18px 22px;" id="gd-body"></div>
     <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;gap:9px;flex-shrink:0;">
       <button onclick="deleteGame()" id="gd-delete" style="background:none;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;color:var(--loss-text);font-size:12px;cursor:pointer;">Delete game</button>
+      <button onclick="tagGame()" id="gd-tag" style="background:none;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;color:var(--text);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Tag</button>
       <button onclick="shareStub()" id="gd-share" style="margin-left:auto;background:none;border:1px solid var(--border2);border-radius:8px;padding:8px 16px;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Share stub</button>
       <button onclick="closeGameDetail()" style="background:var(--bg4);border:none;border-radius:8px;padding:8px 18px;color:var(--text);font-size:13px;cursor:pointer;">Close</button>
     </div>
@@ -6167,6 +6200,7 @@ function openPeople() {
   if (inp) { inp.value = ''; setTimeout(function(){ inp.focus(); }, 60); }
   peopleNote('Search for other momnts collectors by name or @username.');
   loadRequestCount();   // refresh the Requests badge
+  loadTagCount();       // refresh the Tags badge
 }
 function closePeople() {
   var m = document.getElementById('people-modal');
@@ -6177,16 +6211,16 @@ function peopleNote(msg) {
   var list = document.getElementById('pr-list');
   if (list) list.innerHTML = '<div class="pr-note">' + escMomnt(msg) + '</div>';
 }
-// Switch between the Search and Requests panels.
+// Switch between the Search, Requests, and Tags panels.
 function peopleTab(which) {
-  var isReq = which === 'requests';
-  var ts = document.getElementById('pr-tab-search'), tr = document.getElementById('pr-tab-req');
-  if (ts) ts.classList.toggle('on', !isReq);
-  if (tr) tr.classList.toggle('on', isReq);
-  var sp = document.getElementById('pr-search-panel'), rp = document.getElementById('pr-requests-panel');
-  if (sp) sp.style.display = isReq ? 'none' : '';
-  if (rp) rp.style.display = isReq ? '' : 'none';
-  if (isReq) loadRequests();
+  var tabs = { search: 'pr-tab-search', requests: 'pr-tab-req', tags: 'pr-tab-tags' };
+  var panels = { search: 'pr-search-panel', requests: 'pr-requests-panel', tags: 'pr-tags-panel' };
+  Object.keys(tabs).forEach(function(k) {
+    var tb = document.getElementById(tabs[k]); if (tb) tb.classList.toggle('on', k === which);
+    var pn = document.getElementById(panels[k]); if (pn) pn.style.display = (k === which) ? '' : 'none';
+  });
+  if (which === 'requests') loadRequests();
+  if (which === 'tags') loadTags();
 }
 
 // Shared avatar + name/handle/stats cell (used by search rows and request rows).
@@ -6463,6 +6497,291 @@ function renderProfileView(p) {
     + '</div>'
     + '<div class="pv-sect-lbl">Favorite teams</div>'
     + '<div class="pv-teams">' + teamsHtml + '</div>';
+}
+
+// ── SOCIAL PHASE B: tagging (send a pre-filled game/momnt to a friend) ─
+var _tagKind = '';       // 'game' | 'momnt' being tagged
+var _tagSnapshot = null; // the snapshot to send
+var _tagLabel = '';      // human summary shown in the composer
+var _tagPeople = {};     // uid -> selected? in the composer
+var _tags = {};          // id -> incoming tag row (so accept has the snapshot)
+
+// Objective game facts only — personal fields (seat/notes/companions/photo) are
+// left off, and the recipient generates their own id/perspective on accept.
+function buildGameSnapshot(g) {
+  g = canonicalGame(g);
+  return {
+    date: g.date, league: g.league || '',
+    homeTeam: g.homeTeam, awayTeam: g.awayTeam,
+    homeLogo: g.homeLogo || '', awayLogo: g.awayLogo || '',
+    homeScore: g.homeScore, awayScore: g.awayScore,
+    venue: g.venue || '', pinId: g.pinId || '',
+    neutral: !!g.neutral, isPlayoff: !!g.isPlayoff, playoffRound: g.playoffRound || '',
+    eventId: g.eventId || '', players: Array.isArray(g.players) ? g.players : []
+  };
+}
+function buildMomntSnapshot(m) {
+  return { title: m.title || '', date: m.date || '', venue: m.venue || '', league: m.league || '', category: m.category || 'other', type: m.type || '', tier: m.tier || '' };
+}
+function gameSnapshotLabel(s) {
+  var d = s.date ? new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  return (s.awayTeam || '') + ' @ ' + (s.homeTeam || '') + (d ? ' · ' + d : '');
+}
+
+// Open the composer from the game-detail modal for the game being viewed.
+function tagGame() {
+  var g = savedGames.find(function(x) { return x.id === gdCurrentId; });
+  if (!g) return;
+  _tagKind = 'game';
+  _tagSnapshot = buildGameSnapshot(g);
+  _tagLabel = gameSnapshotLabel(_tagSnapshot);
+  openTagComposer('🎟  ' + _tagLabel);
+}
+function tagMomnt(id) {
+  var m = savedMoments.find(function(x) { return x.id === id; });
+  if (!m) return;
+  _tagKind = 'momnt';
+  _tagSnapshot = buildMomntSnapshot(m);
+  _tagLabel = m.title || 'momnt';
+  openTagComposer('★  ' + _tagLabel);
+}
+
+function openTagComposer(whatText) {
+  if (!supa || !userId) { alert('Sign in to tag friends.'); return; }
+  _tagPeople = {};
+  var whatEl = document.getElementById('tg-what'); if (whatEl) whatEl.textContent = whatText || _tagLabel;
+  var note = document.getElementById('tg-note'); if (note) note.value = '';
+  setTagMsg('');
+  var list = document.getElementById('tg-people');
+  if (list) list.innerHTML = '<div class="pr-note">Loading the people you follow…</div>';
+  document.getElementById('tag-modal').classList.add('on');
+  // Load the accounts you follow (accepted) — only they can be tagged.
+  supa.from('follows').select('following_id').eq('follower_id', userId).eq('status', 'accepted')
+    .then(function(res) {
+      if (res && res.error) { if (list) list.innerHTML = '<div class="pr-note">Couldn’t load your follows — try again.</div>'; return; }
+      var ids = ((res && res.data) || []).map(function(f) { return f.following_id; });
+      if (!ids.length) { if (list) list.innerHTML = '<div class="pr-note">You can only tag people you follow. Follow someone first, then tag them here.</div>'; return; }
+      supa.from('profiles').select('user_id,username,display_name,avatar').in('user_id', ids)
+        .then(function(pr) {
+          var people = (pr && pr.data) || [];
+          if (!people.length) { if (list) list.innerHTML = '<div class="pr-note">Couldn’t load those profiles — try again.</div>'; return; }
+          if (list) list.innerHTML = people.map(tagPickRowHTML).join('');
+        })
+        .catch(function() { if (list) list.innerHTML = '<div class="pr-note">Couldn’t load those profiles — try again.</div>'; });
+    })
+    .catch(function() { if (list) list.innerHTML = '<div class="pr-note">Couldn’t load your follows — try again.</div>'; });
+}
+function closeTagComposer() {
+  var m = document.getElementById('tag-modal');
+  if (m) m.classList.remove('on');
+}
+function setTagMsg(msg, ok) {
+  var el = document.getElementById('tg-msg');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('ok', !!ok);
+}
+function tagPickRowHTML(p) {
+  return '<div class="pr-row tg-row" id="tg-row-' + p.user_id + '" onclick="toggleTagPick(\'' + p.user_id + '\')">'
+    + '<div class="tg-cb"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2"/></svg></div>'
+    + personCellHTML(p, false) + '</div>';
+}
+function toggleTagPick(uid) {
+  _tagPeople[uid] = !_tagPeople[uid];
+  var row = document.getElementById('tg-row-' + uid);
+  if (row) row.classList.toggle('on', !!_tagPeople[uid]);
+}
+function sendTags() {
+  if (!supa || !userId || !_tagSnapshot) return;
+  var ids = Object.keys(_tagPeople).filter(function(uid) { return _tagPeople[uid]; });
+  if (!ids.length) { setTagMsg('Pick at least one person to tag.'); return; }
+  var note = (document.getElementById('tg-note').value || '').trim().slice(0, 140);
+  var btn = document.getElementById('tg-send'); if (btn) btn.disabled = true;
+  setTagMsg('Sending…', true);
+  var rows = ids.map(function(uid) {
+    return { from_user: userId, to_user: uid, kind: _tagKind, snapshot: _tagSnapshot, note: note || null };
+  });
+  supa.from('tag_requests').insert(rows)
+    .then(function(res) {
+      if (btn) btn.disabled = false;
+      if (res && res.error) { setTagMsg('Couldn’t send — you can only tag people you follow.'); try { console.warn('momnts tag send failed:', res.error.message); } catch (e) {} return; }
+      setTagMsg('Sent to ' + ids.length + ' ' + (ids.length === 1 ? 'friend' : 'friends') + '.', true);
+      setTimeout(closeTagComposer, 800);
+    })
+    .catch(function() { if (btn) btn.disabled = false; setTagMsg('Couldn’t send — try again.'); });
+}
+
+// ── Tags inbox (incoming tags from friends) ───────────────────────────
+function setTagBadge(n) {
+  var b = document.getElementById('pr-tag-badge');
+  if (!b) return;
+  if (n > 0) { b.textContent = n > 99 ? '99+' : String(n); b.style.display = ''; }
+  else b.style.display = 'none';
+}
+function loadTagCount() {
+  if (!supa || !userId) return;
+  supa.from('tag_requests').select('id', { count: 'exact', head: true }).eq('to_user', userId).eq('status', 'pending')
+    .then(function(res) { if (res && !res.error) setTagBadge(res.count || 0); })
+    .catch(function() {});
+}
+function tagInboxNote(msg) {
+  var el = document.getElementById('pr-tag-list');
+  if (el) el.innerHTML = '<div class="pr-note">' + escMomnt(msg) + '</div>';
+}
+function loadTags() {
+  if (!supa || !userId) { tagInboxNote('Sign in to see tags.'); return; }
+  tagInboxNote('Loading…');
+  _tags = {};
+  supa.from('tag_requests').select('id,from_user,kind,snapshot,note,created_at').eq('to_user', userId).eq('status', 'pending').order('created_at', { ascending: false })
+    .then(function(res) {
+      if (res && res.error) { tagInboxNote('Couldn’t load tags — try again.'); try { console.warn('momnts tags failed:', res.error.message); } catch (e) {} return; }
+      var rows = (res && res.data) || [];
+      setTagBadge(rows.length);
+      if (!rows.length) { tagInboxNote('No tags right now. When a friend tags you in a game or momnt, it shows up here.'); return; }
+      rows.forEach(function(r) { _tags[r.id] = r; });
+      var ids = rows.map(function(r) { return r.from_user; });
+      supa.from('profiles').select('user_id,username,display_name,avatar').in('user_id', ids)
+        .then(function(pr) {
+          var byId = {};
+          ((pr && pr.data) || []).forEach(function(p) { byId[p.user_id] = p; });
+          var el = document.getElementById('pr-tag-list');
+          if (!el) return;
+          el.innerHTML = rows.map(function(r) {
+            return tagInboxRowHTML(r, byId[r.from_user] || { user_id: r.from_user, username: '', display_name: '(unknown user)' });
+          }).join('');
+        })
+        .catch(function() { tagInboxNote('Couldn’t load tags — try again.'); });
+    })
+    .catch(function() { tagInboxNote('Couldn’t load tags — try again.'); });
+}
+function tagInboxRowHTML(r, sender) {
+  var s = r.snapshot || {};
+  var preview = r.kind === 'game' ? gameSnapshotLabel(s) : (s.title || 'a momnt');
+  var kindWord = r.kind === 'game' ? 'tagged you in a game' : 'tagged you in a momnt';
+  var name = escMomnt(sender.display_name || sender.username || 'momnts fan');
+  var handle = escMomnt('@' + (sender.username || ''));
+  var av;
+  if (sender.avatar) {
+    av = '<div class="pr-av" style="background-image:url(' + sender.avatar + ')"></div>';
+  } else {
+    var src = (sender.display_name || sender.username || '?');
+    av = '<div class="pr-av">' + escMomnt(src.slice(0, 2).toUpperCase()) + '</div>';
+  }
+  var noteHtml = r.note ? '<div class="pr-note-txt">“' + escMomnt(r.note) + '”</div>' : '';
+  var meta = '<div class="pr-meta"><div class="pr-name">' + name + '</div>'
+    + '<div class="pr-handle">' + handle + ' · ' + escMomnt(kindWord) + '</div>'
+    + '<div class="pr-preview">' + escMomnt(preview) + '</div>' + noteHtml + '</div>';
+  return '<div class="pr-row" id="tg-in-' + r.id + '" style="align-items:flex-start;">'
+    + av + meta
+    + '<div class="pr-req-actions" id="tg-in-act-' + r.id + '">'
+    + '<button class="pr-approve" type="button" onclick="acceptTag(\'' + r.id + '\')">Accept</button>'
+    + '<button class="pr-decline" type="button" onclick="declineTag(\'' + r.id + '\')">Dismiss</button>'
+    + '</div></div>';
+}
+function disableTagRow(id) {
+  var act = document.getElementById('tg-in-act-' + id);
+  if (act) act.querySelectorAll('button').forEach(function(b) { b.disabled = true; });
+}
+function removeTagRow(id) {
+  var row = document.getElementById('tg-in-' + id);
+  if (row && row.parentNode) row.parentNode.removeChild(row);
+  delete _tags[id];
+  var el = document.getElementById('pr-tag-list');
+  if (el && !el.querySelector('.pr-row')) tagInboxNote('No tags right now. When a friend tags you in a game or momnt, it shows up here.');
+  loadTagCount();
+}
+// Accept = copy the snapshot into your own data, then mark the tag accepted.
+function acceptTag(id) {
+  if (!supa || !userId) return;
+  var t = _tags[id];
+  if (!t) return;
+  disableTagRow(id);
+  if (t.kind === 'game') acceptGameSnapshot(t.snapshot || {});
+  else acceptMomntSnapshot(t.snapshot || {});
+  supa.from('tag_requests').update({ status: 'accepted' }).eq('id', id)
+    .then(function(res) { if (res && res.error) { try { console.warn('momnts accept-tag failed:', res.error.message); } catch (e) {} } })
+    .catch(function() {});
+  removeTagRow(id);
+  socialToast('✓ Added to your ' + (t.kind === 'game' ? 'game log' : 'momnts') + '!');
+}
+function declineTag(id) {
+  if (!supa || !userId) return;
+  disableTagRow(id);
+  supa.from('tag_requests').delete().eq('id', id)
+    .then(function(res) { if (res && res.error) { try { console.warn('momnts decline-tag failed:', res.error.message); } catch (e) {} loadTags(); return; } removeTagRow(id); })
+    .catch(function() { loadTags(); });
+}
+
+// Turn an accepted game snapshot into the recipient's own game (their perspective).
+function acceptGameSnapshot(s) {
+  var game = {
+    id: 'g' + Date.now(),
+    momntNo: nextMomntNo(),
+    date: s.date,
+    homeTeam: s.homeTeam, awayTeam: s.awayTeam,
+    homeLogo: s.homeLogo || '', awayLogo: s.awayLogo || '',
+    homeScore: s.homeScore, awayScore: s.awayScore,
+    myTeam: s.homeTeam, team: s.homeTeam, opponent: s.awayTeam,
+    myLogo: s.homeLogo || '', teamLogo: s.homeLogo || '', myTeamLogo: s.homeLogo || '',
+    venue: s.venue || '', league: (s.league || '').toUpperCase(),
+    pinId: s.pinId || '', homeAway: 'home',
+    neutral: !!s.neutral,
+    scoreUs: s.homeScore, scoreThem: s.awayScore,
+    result: '', seat: '', notes: '', companions: '', photo: '',
+    isPlayoff: !!s.isPlayoff, playoffRound: s.playoffRound || '',
+    eventId: s.eventId || '',
+    players: Array.isArray(s.players) ? s.players.slice() : []
+  };
+  canonicalGame(game);   // normalizes home/away + re-picks a fav as myTeam if present
+  game.result = computeMyResult(game);
+  savedGames.unshift(game);
+  if (game.pinId) {
+    var pin = PINS.find(function(p) { return p[0] === game.pinId; });
+    if (pin) pin[4] = true;
+    visitedStadiums.add(game.pinId);
+  }
+  (game.players || []).forEach(function(p) {
+    if (!p || !p.espnId) return;
+    var ge = { date: game.date, opponent: game.opponent, stats: p.stats, group: p.group };
+    var ex = playerList.find(function(e) { return e.espnId == p.espnId && e.sport === p.sport; });
+    if (ex) {
+      if (!ex.games) ex.games = [];
+      var dupe = ex.games.some(function(x) { return x.date === ge.date && x.opponent === ge.opponent; });
+      if (!dupe) ex.games.push(ge);
+      ex.seen = ex.games.length;
+    } else {
+      playerList.unshift({ id: 'p' + p.espnId, espnId: p.espnId, sport: p.sport, name: p.name, team: p.team, pos: p.pos, seen: 1, badge: '', fav: false, games: [ge] });
+    }
+  });
+  checklistDone[0] = true;
+  if (game.pinId) checklistDone[1] = true;
+  if ((game.players || []).length) checklistDone[2] = true;
+  saveState();
+  renderGameLog(); renderHome(); renderPins(); renderPlayers(); renderChecklist();
+}
+function acceptMomntSnapshot(s) {
+  var cat = (s.category && MOMNT_CATS[s.category]) ? s.category : 'other';
+  var moment = {
+    id: 'm' + Date.now(),
+    title: s.title || 'Untitled momnt',
+    date: s.date || '', venue: s.venue || '', league: s.league || '',
+    category: cat, type: s.type || (MOMNT_CATS[cat] ? MOMNT_CATS[cat].label : '')
+  };
+  if (s.tier) moment.tier = s.tier;
+  if (!savedMoments) savedMoments = [];
+  savedMoments.unshift(moment);
+  savedMoments.sort(function(a, b) { return (a.date || '') < (b.date || '') ? 1 : -1; });
+  checklistDone[3] = true;
+  saveState();
+  renderMoments(); renderHome(); renderChecklist();
+}
+// Small transient confirmation toast (matches the players-added toast style).
+function socialToast(msg) {
+  var toast = document.createElement('div');
+  toast.textContent = msg;
+  toast.style.cssText = 'position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1FB574;color:#fff;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9800;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.4);';
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 2600);
 }
 
 // After auth (fresh login or a restored session): capture identity, pull cloud
