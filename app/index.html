@@ -706,6 +706,18 @@ textarea.mi{resize:none;height:68px;}
 .pr-stats{font-size:11px;color:var(--text3);margin-top:2px;}
 .pr-action{flex-shrink:0;}
 .pr-note{font-size:13px;color:var(--text3);text-align:center;padding:22px 8px;line-height:1.5;}
+.pr-tabs{display:flex;gap:4px;margin-bottom:10px;background:var(--bg3);border-radius:10px;padding:3px;}
+.pr-tab{flex:1;background:none;border:none;color:var(--text3);font-family:inherit;font-size:12.5px;font-weight:600;padding:8px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.pr-tab.on{background:var(--bg2);color:var(--text);}
+.pr-badge{background:var(--accent);color:#04120b;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
+.pr-fbtn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 15px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.pr-fbtn.following,.pr-fbtn.pending{background:var(--bg3);color:var(--text2);border:1px solid var(--border2);}
+.pr-fbtn:disabled{opacity:.55;cursor:default;}
+.pr-req-actions{display:flex;gap:6px;flex-shrink:0;}
+.pr-approve{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.pr-decline{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:7px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.pr-decline:hover{border-color:#ff6b6b;color:#ff6b6b;}
+.pr-req-actions button:disabled{opacity:.55;cursor:default;}
 </style>
 </head>
 <body>
@@ -792,18 +804,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
-<!-- FIND PEOPLE (user search) -->
+<!-- FIND PEOPLE (user search + follow requests) -->
 <div id="people-modal" class="pm-overlay" onclick="if(event.target===this)closePeople()">
   <div class="pm-card">
     <div class="pm-head">
-      <div class="pm-title">Find people</div>
+      <div class="pm-title">People</div>
       <button class="pm-x" type="button" onclick="closePeople()" aria-label="Close">&times;</button>
     </div>
-    <div class="pr-search-wrap">
-      <span class="pr-search-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg></span>
-      <input class="pr-search" id="pr-input" type="text" placeholder="Search by name or @username" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onPeopleInput()">
+    <div class="pr-tabs">
+      <button class="pr-tab on" id="pr-tab-search" type="button" onclick="peopleTab('search')">Search</button>
+      <button class="pr-tab" id="pr-tab-req" type="button" onclick="peopleTab('requests')">Requests<span class="pr-badge" id="pr-req-badge" style="display:none;">0</span></button>
     </div>
-    <div class="pr-list" id="pr-list"></div>
+    <div id="pr-search-panel">
+      <div class="pr-search-wrap">
+        <span class="pr-search-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg></span>
+        <input class="pr-search" id="pr-input" type="text" placeholder="Search by name or @username" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onPeopleInput()">
+      </div>
+      <div class="pr-list" id="pr-list"></div>
+    </div>
+    <div id="pr-requests-panel" style="display:none;">
+      <div class="pr-list" id="pr-req-list"></div>
+    </div>
   </div>
 </div>
 
@@ -6103,14 +6124,19 @@ function syncProfileSoon() {
   _profileTimer = setTimeout(syncProfile, 1200);
 }
 
-// ── SOCIAL: find people (search public profiles) ──────────────────────
+// ── SOCIAL: find people (search + follow) & follow-request inbox ───────
+var _followState = {};   // uid -> 'accepted' | 'pending' (absent = not following)
+var _peoplePriv = {};    // uid -> is_private (drives Follow-vs-Request label)
+
 function openPeople() {
   var m = document.getElementById('people-modal');
   if (!m) return;
   m.classList.add('on');
+  peopleTab('search');
   var inp = document.getElementById('pr-input');
   if (inp) { inp.value = ''; setTimeout(function(){ inp.focus(); }, 60); }
   peopleNote('Search for other momnts collectors by name or @username.');
+  loadRequestCount();   // refresh the Requests badge
 }
 function closePeople() {
   var m = document.getElementById('people-modal');
@@ -6121,6 +6147,39 @@ function peopleNote(msg) {
   var list = document.getElementById('pr-list');
   if (list) list.innerHTML = '<div class="pr-note">' + escMomnt(msg) + '</div>';
 }
+// Switch between the Search and Requests panels.
+function peopleTab(which) {
+  var isReq = which === 'requests';
+  var ts = document.getElementById('pr-tab-search'), tr = document.getElementById('pr-tab-req');
+  if (ts) ts.classList.toggle('on', !isReq);
+  if (tr) tr.classList.toggle('on', isReq);
+  var sp = document.getElementById('pr-search-panel'), rp = document.getElementById('pr-requests-panel');
+  if (sp) sp.style.display = isReq ? 'none' : '';
+  if (rp) rp.style.display = isReq ? '' : 'none';
+  if (isReq) loadRequests();
+}
+
+// Shared avatar + name/handle/stats cell (used by search rows and request rows).
+function personCellHTML(p, showLock) {
+  var name = escMomnt(p.display_name || p.username || 'momnts fan');
+  var handle = escMomnt('@' + (p.username || ''));
+  var av;
+  if (p.avatar) {
+    av = '<div class="pr-av" style="background-image:url(' + p.avatar + ')"></div>';
+  } else {
+    var src = (p.display_name || p.username || '?');
+    av = '<div class="pr-av">' + escMomnt(src.slice(0, 2).toUpperCase()) + '</div>';
+  }
+  var g = p.games_count || 0, m = p.momnts_count || 0;
+  var stats = g + (g === 1 ? ' game' : ' games') + ' · ' + m + (m === 1 ? ' momnt' : ' momnts');
+  var lock = (showLock && p.is_private)
+    ? '<span class="pr-lock" title="Private"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></span>'
+    : '';
+  return av
+    + '<div class="pr-meta"><div class="pr-name">' + name + lock + '</div>'
+    + '<div class="pr-handle">' + handle + '</div>'
+    + '<div class="pr-stats">' + stats + '</div></div>';
+}
 
 // Debounced input handler on the search box.
 function onPeopleInput() {
@@ -6128,8 +6187,9 @@ function onPeopleInput() {
   _peopleTimer = setTimeout(runPeopleSearch, 280);
 }
 
-// Query public.profiles by username OR display name (case-insensitive), newest
-// stats first, excluding yourself. RLS already restricts this to logged-in users.
+// Query public.profiles by username OR display name (case-insensitive), excluding
+// yourself; then look up your follow relationship to each result for the button
+// state. RLS already restricts both reads to logged-in users.
 function runPeopleSearch() {
   var inp = document.getElementById('pr-input');
   var raw = inp ? inp.value : '';
@@ -6147,7 +6207,15 @@ function runPeopleSearch() {
     .limit(25)
     .then(function(res) {
       if (res && res.error) { peopleNote('Couldn’t search right now — try again.'); try { console.warn('momnts people search failed:', res.error.message); } catch (e) {} return; }
-      renderPeopleResults((res && res.data) || [], q);
+      var list = (res && res.data) || [];
+      if (!list.length) { peopleNote('No one found for “' + q + '”.'); return; }
+      var ids = list.map(function(p) { _peoplePriv[p.user_id] = !!p.is_private; delete _followState[p.user_id]; return p.user_id; });
+      supa.from('follows').select('following_id,status').eq('follower_id', userId).in('following_id', ids)
+        .then(function(fr) {
+          if (fr && !fr.error && fr.data) fr.data.forEach(function(f) { _followState[f.following_id] = f.status; });
+          renderPeopleResults(list, q);
+        })
+        .catch(function() { renderPeopleResults(list, q); });
     })
     .catch(function() { peopleNote('Couldn’t search right now — try again.'); });
 }
@@ -6160,27 +6228,133 @@ function renderPeopleResults(list, q) {
 }
 
 function peopleRowHTML(p) {
-  var name = escMomnt(p.display_name || p.username || 'momnts fan');
-  var handle = escMomnt('@' + (p.username || ''));
-  var av;
-  if (p.avatar) {
-    av = '<div class="pr-av" style="background-image:url(' + p.avatar + ')"></div>';
-  } else {
-    var src = (p.display_name || p.username || '?');
-    av = '<div class="pr-av">' + escMomnt(src.slice(0, 2).toUpperCase()) + '</div>';
-  }
-  var g = p.games_count || 0, m = p.momnts_count || 0;
-  var stats = g + (g === 1 ? ' game' : ' games') + ' · ' + m + (m === 1 ? ' momnt' : ' momnts');
-  var lock = p.is_private
-    ? '<span class="pr-lock" title="Private"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></span>'
-    : '';
-  return '<div class="pr-row">'
-    + av
-    + '<div class="pr-meta"><div class="pr-name">' + name + lock + '</div>'
-    + '<div class="pr-handle">' + handle + '</div>'
-    + '<div class="pr-stats">' + stats + '</div></div>'
-    + '<div class="pr-action" id="pr-act-' + p.user_id + '"></div>'
+  return '<div class="pr-row">' + personCellHTML(p, true)
+    + '<div class="pr-action" id="pr-act-' + p.user_id + '">' + followBtnHTML(p.user_id) + '</div>'
     + '</div>';
+}
+
+// Follow button reflecting the current relationship: Following (accepted) /
+// Requested (pending) / Follow (public) / Request (private).
+function followBtnHTML(uid) {
+  var st = _followState[uid];
+  if (st === 'accepted') return '<button class="pr-fbtn following" type="button" onclick="toggleFollow(\'' + uid + '\')">Following</button>';
+  if (st === 'pending')  return '<button class="pr-fbtn pending" type="button" onclick="toggleFollow(\'' + uid + '\')">Requested</button>';
+  return '<button class="pr-fbtn" type="button" onclick="toggleFollow(\'' + uid + '\')">' + (_peoplePriv[uid] ? 'Request' : 'Follow') + '</button>';
+}
+function refreshFollowBtn(uid) {
+  var slot = document.getElementById('pr-act-' + uid);
+  if (slot) slot.innerHTML = followBtnHTML(uid);
+}
+
+// Follow/unfollow (or send/cancel a request). The DB trigger decides whether a
+// new row is 'accepted' (public target) or 'pending' (private target), so we read
+// the status back rather than trusting the client.
+function toggleFollow(uid) {
+  if (!supa || !userId) return;
+  var slot = document.getElementById('pr-act-' + uid);
+  var btn = slot ? slot.querySelector('button') : null;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  var st = _followState[uid];
+  if (st === 'accepted' || st === 'pending') {
+    supa.from('follows').delete().eq('follower_id', userId).eq('following_id', uid)
+      .then(function(res) {
+        if (res && res.error) { try { console.warn('momnts unfollow failed:', res.error.message); } catch (e) {} }
+        else { delete _followState[uid]; }
+        refreshFollowBtn(uid);
+      })
+      .catch(function() { refreshFollowBtn(uid); });
+  } else {
+    supa.from('follows').insert({ follower_id: userId, following_id: uid }).select('status').single()
+      .then(function(res) {
+        if (res && res.error) { try { console.warn('momnts follow failed:', res.error.message); } catch (e) {} }
+        else { _followState[uid] = (res.data && res.data.status) || (_peoplePriv[uid] ? 'pending' : 'accepted'); }
+        refreshFollowBtn(uid);
+      })
+      .catch(function() { refreshFollowBtn(uid); });
+  }
+}
+
+// ── Requests inbox (people asking to follow a private you) ────────────
+function setReqBadge(n) {
+  var b = document.getElementById('pr-req-badge');
+  if (!b) return;
+  if (n > 0) { b.textContent = n > 99 ? '99+' : String(n); b.style.display = ''; }
+  else b.style.display = 'none';
+}
+function loadRequestCount() {
+  if (!supa || !userId) return;
+  supa.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId).eq('status', 'pending')
+    .then(function(res) { if (res && !res.error) setReqBadge(res.count || 0); })
+    .catch(function() {});
+}
+function reqNote(msg) {
+  var el = document.getElementById('pr-req-list');
+  if (el) el.innerHTML = '<div class="pr-note">' + escMomnt(msg) + '</div>';
+}
+function loadRequests() {
+  if (!supa || !userId) { reqNote('Sign in to see follow requests.'); return; }
+  reqNote('Loading…');
+  supa.from('follows').select('follower_id,created_at').eq('following_id', userId).eq('status', 'pending').order('created_at', { ascending: false })
+    .then(function(res) {
+      if (res && res.error) { reqNote('Couldn’t load requests — try again.'); try { console.warn('momnts requests failed:', res.error.message); } catch (e) {} return; }
+      var rows = (res && res.data) || [];
+      setReqBadge(rows.length);
+      if (!rows.length) { reqNote('No follow requests right now.'); return; }
+      var ids = rows.map(function(r) { return r.follower_id; });
+      supa.from('profiles').select('user_id,username,display_name,avatar,games_count,momnts_count').in('user_id', ids)
+        .then(function(pr) {
+          var byId = {};
+          ((pr && pr.data) || []).forEach(function(p) { byId[p.user_id] = p; });
+          var el = document.getElementById('pr-req-list');
+          if (!el) return;
+          el.innerHTML = rows.map(function(r) {
+            return requestRowHTML(byId[r.follower_id] || { user_id: r.follower_id, username: '', display_name: '(unknown user)' });
+          }).join('');
+        })
+        .catch(function() { reqNote('Couldn’t load requests — try again.'); });
+    })
+    .catch(function() { reqNote('Couldn’t load requests — try again.'); });
+}
+function requestRowHTML(p) {
+  var uid = p.user_id;
+  return '<div class="pr-row" id="pr-req-row-' + uid + '">' + personCellHTML(p, false)
+    + '<div class="pr-req-actions" id="pr-req-act-' + uid + '">'
+    + '<button class="pr-approve" type="button" onclick="approveRequest(\'' + uid + '\')">Approve</button>'
+    + '<button class="pr-decline" type="button" onclick="declineRequest(\'' + uid + '\')">Decline</button>'
+    + '</div></div>';
+}
+function disableReqRow(uid) {
+  var act = document.getElementById('pr-req-act-' + uid);
+  if (act) act.querySelectorAll('button').forEach(function(b) { b.disabled = true; });
+}
+function removeReqRow(uid) {
+  var row = document.getElementById('pr-req-row-' + uid);
+  if (row && row.parentNode) row.parentNode.removeChild(row);
+  var el = document.getElementById('pr-req-list');
+  if (el && !el.querySelector('.pr-row')) reqNote('No follow requests right now.');
+  loadRequestCount();
+}
+// Approve = the target (you) sets status to 'accepted' (allowed by RLS).
+function approveRequest(uid) {
+  if (!supa || !userId) return;
+  disableReqRow(uid);
+  supa.from('follows').update({ status: 'accepted' }).eq('follower_id', uid).eq('following_id', userId)
+    .then(function(res) {
+      if (res && res.error) { try { console.warn('momnts approve failed:', res.error.message); } catch (e) {} loadRequests(); return; }
+      removeReqRow(uid);
+    })
+    .catch(function() { loadRequests(); });
+}
+// Decline = delete the pending row (either party may delete under RLS).
+function declineRequest(uid) {
+  if (!supa || !userId) return;
+  disableReqRow(uid);
+  supa.from('follows').delete().eq('follower_id', uid).eq('following_id', userId)
+    .then(function(res) {
+      if (res && res.error) { try { console.warn('momnts decline failed:', res.error.message); } catch (e) {} loadRequests(); return; }
+      removeReqRow(uid);
+    })
+    .catch(function() { loadRequests(); });
 }
 
 // After auth (fresh login or a restored session): capture identity, pull cloud
