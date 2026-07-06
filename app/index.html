@@ -718,6 +718,24 @@ textarea.mi{resize:none;height:68px;}
 .pr-decline{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:7px 12px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;}
 .pr-decline:hover{border-color:#ff6b6b;color:#ff6b6b;}
 .pr-req-actions button:disabled{opacity:.55;cursor:default;}
+.pr-cell{display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;}
+/* View-a-profile modal */
+.pv-top{display:flex;align-items:center;gap:14px;margin:4px 0 14px;}
+.pv-av{width:72px;height:72px;border-radius:50%;background:var(--bg4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:26px;color:var(--text2);background-size:cover;background-position:center;overflow:hidden;}
+.pv-id{min-width:0;}
+.pv-name{font-family:var(--font-display);font-size:20px;font-weight:700;display:flex;align-items:center;gap:7px;letter-spacing:-.3px;}
+.pv-handle{font-size:13px;color:var(--text3);}
+.pv-action{margin-bottom:16px;}
+.pv-action .pr-fbtn{width:100%;padding:11px;font-size:14px;}
+.pv-stats{display:flex;gap:8px;margin-bottom:18px;}
+.pv-stat{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:12px 8px;text-align:center;}
+.pv-num{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--text);}
+.pv-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-top:2px;}
+.pv-sect-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px;}
+.pv-teams{display:flex;flex-wrap:wrap;gap:8px;}
+.pv-team{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 12px 5px 6px;font-size:12px;font-weight:600;}
+.pv-team img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
+.pv-empty-teams{font-size:12px;color:var(--text3);}
 </style>
 </head>
 <body>
@@ -825,6 +843,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="pr-requests-panel" style="display:none;">
       <div class="pr-list" id="pr-req-list"></div>
     </div>
+  </div>
+</div>
+
+<!-- VIEW A PROFILE -->
+<div id="profileview-modal" class="pm-overlay" onclick="if(event.target===this)closeProfileView()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title">Profile</div>
+      <button class="pm-x" type="button" onclick="closeProfileView()" aria-label="Close">&times;</button>
+    </div>
+    <div id="pv-body"><div class="pr-note">Loading…</div></div>
   </div>
 </div>
 
@@ -6127,6 +6156,7 @@ function syncProfileSoon() {
 // ── SOCIAL: find people (search + follow) & follow-request inbox ───────
 var _followState = {};   // uid -> 'accepted' | 'pending' (absent = not following)
 var _peoplePriv = {};    // uid -> is_private (drives Follow-vs-Request label)
+var _pvUid = '';         // uid currently shown in the view-a-profile modal
 
 function openPeople() {
   var m = document.getElementById('people-modal');
@@ -6228,7 +6258,8 @@ function renderPeopleResults(list, q) {
 }
 
 function peopleRowHTML(p) {
-  return '<div class="pr-row">' + personCellHTML(p, true)
+  return '<div class="pr-row">'
+    + '<div class="pr-cell" onclick="viewProfile(\'' + p.user_id + '\')">' + personCellHTML(p, true) + '</div>'
     + '<div class="pr-action" id="pr-act-' + p.user_id + '">' + followBtnHTML(p.user_id) + '</div>'
     + '</div>';
 }
@@ -6241,9 +6272,17 @@ function followBtnHTML(uid) {
   if (st === 'pending')  return '<button class="pr-fbtn pending" type="button" onclick="toggleFollow(\'' + uid + '\')">Requested</button>';
   return '<button class="pr-fbtn" type="button" onclick="toggleFollow(\'' + uid + '\')">' + (_peoplePriv[uid] ? 'Request' : 'Follow') + '</button>';
 }
+// Every place this user's follow button is currently rendered (search row and/or
+// the open profile-view modal), so a state change updates all of them.
+function followSlots(uid) {
+  var arr = [];
+  var a = document.getElementById('pr-act-' + uid);
+  if (a) arr.push(a);
+  if (_pvUid === uid) { var b = document.getElementById('pv-action'); if (b) arr.push(b); }
+  return arr;
+}
 function refreshFollowBtn(uid) {
-  var slot = document.getElementById('pr-act-' + uid);
-  if (slot) slot.innerHTML = followBtnHTML(uid);
+  followSlots(uid).forEach(function(slot) { slot.innerHTML = followBtnHTML(uid); });
 }
 
 // Follow/unfollow (or send/cancel a request). The DB trigger decides whether a
@@ -6251,9 +6290,7 @@ function refreshFollowBtn(uid) {
 // the status back rather than trusting the client.
 function toggleFollow(uid) {
   if (!supa || !userId) return;
-  var slot = document.getElementById('pr-act-' + uid);
-  var btn = slot ? slot.querySelector('button') : null;
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  followSlots(uid).forEach(function(slot) { var b = slot.querySelector('button'); if (b) { b.disabled = true; b.textContent = '…'; } });
   var st = _followState[uid];
   if (st === 'accepted' || st === 'pending') {
     supa.from('follows').delete().eq('follower_id', userId).eq('following_id', uid)
@@ -6317,7 +6354,8 @@ function loadRequests() {
 }
 function requestRowHTML(p) {
   var uid = p.user_id;
-  return '<div class="pr-row" id="pr-req-row-' + uid + '">' + personCellHTML(p, false)
+  return '<div class="pr-row" id="pr-req-row-' + uid + '">'
+    + '<div class="pr-cell" onclick="viewProfile(\'' + uid + '\')">' + personCellHTML(p, false) + '</div>'
     + '<div class="pr-req-actions" id="pr-req-act-' + uid + '">'
     + '<button class="pr-approve" type="button" onclick="approveRequest(\'' + uid + '\')">Approve</button>'
     + '<button class="pr-decline" type="button" onclick="declineRequest(\'' + uid + '\')">Decline</button>'
@@ -6355,6 +6393,76 @@ function declineRequest(uid) {
       removeReqRow(uid);
     })
     .catch(function() { loadRequests(); });
+}
+
+// ── View a profile (public: avatar, handle, stats, fav teams, follow) ─
+function closeProfileView() {
+  _pvUid = '';
+  var m = document.getElementById('profileview-modal');
+  if (m) m.classList.remove('on');
+}
+function viewProfile(uid) {
+  if (!uid) return;
+  _pvUid = uid;
+  var m = document.getElementById('profileview-modal');
+  if (m) m.classList.add('on');
+  var body = document.getElementById('pv-body');
+  if (body) body.innerHTML = '<div class="pr-note">Loading…</div>';
+  if (!supa || !userId) { if (body) body.innerHTML = '<div class="pr-note">Sign in to view profiles.</div>'; return; }
+  supa.from('profiles')
+    .select('user_id,username,display_name,avatar,is_private,games_count,momnts_count,fav_teams')
+    .eq('user_id', uid).single()
+    .then(function(res) {
+      if ((res && res.error) || !res.data) { if (body && _pvUid === uid) body.innerHTML = '<div class="pr-note">Couldn’t load this profile.</div>'; return; }
+      var p = res.data;
+      // Pull my current follow status to this user so the button is accurate.
+      supa.from('follows').select('status').eq('follower_id', userId).eq('following_id', uid).maybeSingle()
+        .then(function(fr) {
+          if (fr && !fr.error && fr.data) _followState[uid] = fr.data.status; else delete _followState[uid];
+          if (_pvUid === uid) renderProfileView(p);
+        })
+        .catch(function() { if (_pvUid === uid) renderProfileView(p); });
+    })
+    .catch(function() { if (body && _pvUid === uid) body.innerHTML = '<div class="pr-note">Couldn’t load this profile.</div>'; });
+}
+function renderProfileView(p) {
+  var body = document.getElementById('pv-body');
+  if (!body) return;
+  var uid = p.user_id;
+  _peoplePriv[uid] = !!p.is_private;
+  var name = escMomnt(p.display_name || p.username || 'momnts fan');
+  var handle = escMomnt('@' + (p.username || ''));
+  var avBig;
+  if (p.avatar) {
+    avBig = '<div class="pv-av" style="background-image:url(' + p.avatar + ')"></div>';
+  } else {
+    var s = (p.display_name || p.username || '?');
+    avBig = '<div class="pv-av">' + escMomnt(s.slice(0, 2).toUpperCase()) + '</div>';
+  }
+  var lock = p.is_private
+    ? '<span class="pr-lock" title="Private account"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></span>'
+    : '';
+  var g = p.games_count || 0, m = p.momnts_count || 0;
+  var teams = Array.isArray(p.fav_teams) ? p.fav_teams : [];
+  var teamsHtml = teams.length
+    ? teams.map(function(t) {
+        var logo = t && t.logo ? '<img src="' + escMomnt(t.logo) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+        var tn = escMomnt(((t && t.city ? t.city + ' ' : '') + ((t && t.name) || '')).trim() || (t && t.id) || 'Team');
+        return '<div class="pv-team">' + logo + '<span>' + tn + '</span></div>';
+      }).join('')
+    : '<div class="pv-empty-teams">No favorite teams yet.</div>';
+  body.innerHTML =
+      '<div class="pv-top">' + avBig
+    +   '<div class="pv-id"><div class="pv-name">' + name + lock + '</div><div class="pv-handle">' + handle + '</div></div>'
+    + '</div>'
+    + '<div class="pv-action" id="pv-action">' + followBtnHTML(uid) + '</div>'
+    + '<div class="pv-stats">'
+    +   '<div class="pv-stat"><div class="pv-num">' + g + '</div><div class="pv-lbl">games</div></div>'
+    +   '<div class="pv-stat"><div class="pv-num">' + m + '</div><div class="pv-lbl">momnts</div></div>'
+    +   '<div class="pv-stat"><div class="pv-num">' + teams.length + '</div><div class="pv-lbl">teams</div></div>'
+    + '</div>'
+    + '<div class="pv-sect-lbl">Favorite teams</div>'
+    + '<div class="pv-teams">' + teamsHtml + '</div>';
 }
 
 // After auth (fresh login or a restored session): capture identity, pull cloud
