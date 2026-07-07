@@ -3906,7 +3906,11 @@ function openMomntGame(gameId, ev) {
 
 // One flip card for a momnt (front = medallion/title/tier, back = details + linked game).
 // ── Premium holographic card: 3D tilt on hover, sheen/holo follow cursor, flip on click ──
+// Touch devices don't get a reliable mouseleave, so the hover-tilt can stick and
+// look glitchy — skip the tilt entirely on touch (tap-to-flip still works).
+var _isTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0);
 function mvcMove(e, card) {
+  if (_isTouch) return;
   var r = card.getBoundingClientRect();
   var px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
   var max = 13, ry = (px - 0.5) * 2 * max, rx = -(py - 0.5) * 2 * max;
@@ -3919,6 +3923,7 @@ function mvcMove(e, card) {
   if (ho) { ho.style.opacity = '0.5'; ho.style.backgroundPosition = (px * 130) + '% ' + (py * 130) + '%'; }
 }
 function mvcLeave(card) {
+  if (_isTouch) return;
   var base = card.classList.contains('flipped') ? 180 : 0;
   card.style.transition = 'transform .7s cubic-bezier(.2,.8,.2,1)';
   card.style.transform = 'rotateX(0deg) rotateY(' + base + 'deg)';
