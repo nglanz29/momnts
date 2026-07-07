@@ -747,6 +747,11 @@ textarea.mi{resize:none;height:68px;}
 .pv-team{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 12px 5px 6px;font-size:12px;font-weight:600;}
 .pv-team img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
 .pv-empty-teams{font-size:12px;color:var(--text3);}
+.pv-more{display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+.pv-more-btn{flex:1;background:none;border:1px solid var(--border2);border-radius:9px;padding:9px;color:var(--text2);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;}
+.pv-more-btn:hover{border-color:var(--text3);color:var(--text);}
+.pv-more-btn.danger:hover{border-color:#ff6b6b;color:#ff6b6b;}
+.pv-blocked-note{font-size:12px;color:var(--text3);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.4;}
 /* Tag composer + tag inbox */
 .tg-what{font-size:13px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin-bottom:4px;line-height:1.4;}
 .tg-note{width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:56px;}
@@ -845,6 +850,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
       <div class="pm-switch" id="pm-private-switch"><div class="pm-switch-knob"></div></div>
     </div>
+    <div class="pm-manage-row"><button type="button" class="pm-manage-btn" onclick="openBlocked()">Blocked accounts →</button></div>
     <div class="auth-msg" id="pm-msg" style="min-height:0;margin-bottom:2px;"></div>
     <button class="ob-btn" type="button" onclick="saveProfile()">Save</button>
     <button class="pm-signout" type="button" onclick="signOut()">Sign out</button>
@@ -904,6 +910,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="pm-x" type="button" onclick="closeProfileView()" aria-label="Close">&times;</button>
     </div>
     <div id="pv-body"><div class="pr-note">Loading…</div></div>
+  </div>
+</div>
+
+<!-- BLOCKED ACCOUNTS -->
+<div id="blocked-modal" class="pm-overlay" onclick="if(event.target===this)closeBlocked()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title">Blocked accounts</div>
+      <button class="pm-x" type="button" onclick="closeBlocked()" aria-label="Close">&times;</button>
+    </div>
+    <div class="pr-list" id="blk-list"></div>
   </div>
 </div>
 
@@ -6252,6 +6269,7 @@ function syncProfileSoon() {
 var _followState = {};   // uid -> 'accepted' | 'pending' (absent = not following)
 var _peoplePriv = {};    // uid -> is_private (drives Follow-vs-Request label)
 var _pvUid = '';         // uid currently shown in the view-a-profile modal
+var _pvBlocked = false;  // whether the viewer has blocked the shown profile
 
 function openPeople() {
   var m = document.getElementById('people-modal');
@@ -6511,13 +6529,16 @@ function viewProfile(uid) {
     .then(function(res) {
       if ((res && res.error) || !res.data) { if (body && _pvUid === uid) body.innerHTML = '<div class="pr-note">Couldn’t load this profile.</div>'; return; }
       var p = res.data;
-      // Pull my current follow status to this user so the button is accurate.
-      supa.from('follows').select('status').eq('follower_id', userId).eq('following_id', uid).maybeSingle()
-        .then(function(fr) {
-          if (fr && !fr.error && fr.data) _followState[uid] = fr.data.status; else delete _followState[uid];
-          if (_pvUid === uid) renderProfileView(p);
-        })
-        .catch(function() { if (_pvUid === uid) renderProfileView(p); });
+      // Pull my follow status + whether I've blocked them, so the actions are accurate.
+      Promise.all([
+        supa.from('follows').select('status').eq('follower_id', userId).eq('following_id', uid).maybeSingle(),
+        supa.from('blocks').select('blocked_id').eq('blocker_id', userId).eq('blocked_id', uid).maybeSingle()
+      ]).then(function(rs) {
+        var fr = rs[0], br = rs[1];
+        if (fr && !fr.error && fr.data) _followState[uid] = fr.data.status; else delete _followState[uid];
+        _pvBlocked = !!(br && !br.error && br.data);
+        if (_pvUid === uid) renderProfileView(p);
+      }).catch(function() { if (_pvUid === uid) renderProfileView(p); });
     })
     .catch(function() { if (body && _pvUid === uid) body.innerHTML = '<div class="pr-note">Couldn’t load this profile.</div>'; });
 }
@@ -6547,18 +6568,109 @@ function renderProfileView(p) {
         return '<div class="pv-team">' + logo + '<span>' + tn + '</span></div>';
       }).join('')
     : '<div class="pv-empty-teams">No favorite teams yet.</div>';
+  var nameArg = (p.display_name || p.username || 'this account').replace(/'/g, "\\'");
+  // When blocked: no follow button, a note, and an Unblock action. Otherwise the
+  // follow button + a Block action.
+  var actionBlock = _pvBlocked
+    ? '<div class="pv-blocked-note">You’ve blocked this account. They can’t follow, tag, or find you.</div>'
+    : '<div class="pv-action" id="pv-action">' + followBtnHTML(uid) + '</div>';
+  var moreRow = _pvBlocked
+    ? '<div class="pv-more"><button class="pv-more-btn" type="button" onclick="unblockUser(\'' + uid + '\')">Unblock</button></div>'
+    : '<div class="pv-more"><button class="pv-more-btn danger" type="button" onclick="confirmBlock(\'' + uid + '\',\'' + nameArg + '\')">Block</button></div>';
   body.innerHTML =
       '<div class="pv-top">' + avBig
     +   '<div class="pv-id"><div class="pv-name">' + name + lock + '</div><div class="pv-handle">' + handle + '</div></div>'
     + '</div>'
-    + '<div class="pv-action" id="pv-action">' + followBtnHTML(uid) + '</div>'
+    + actionBlock
     + '<div class="pv-stats">'
     +   '<div class="pv-stat"><div class="pv-num">' + g + '</div><div class="pv-lbl">games</div></div>'
     +   '<div class="pv-stat"><div class="pv-num">' + m + '</div><div class="pv-lbl">momnts</div></div>'
     +   '<div class="pv-stat"><div class="pv-num">' + teams.length + '</div><div class="pv-lbl">teams</div></div>'
     + '</div>'
     + '<div class="pv-sect-lbl">Favorite teams</div>'
-    + '<div class="pv-teams">' + teamsHtml + '</div>';
+    + '<div class="pv-teams">' + teamsHtml + '</div>'
+    + moreRow;
+}
+
+// ── SOCIAL PHASE C: block / unblock ───────────────────────────────────
+function confirmBlock(uid, name) {
+  if (!confirm('Block ' + (name || 'this account') + '? This removes any follows between you, cancels pending tags, and stops them from following, tagging, or finding you.')) return;
+  blockUser(uid);
+}
+function blockUser(uid) {
+  if (!supa || !userId || !uid) return;
+  supa.from('blocks').insert({ blocker_id: userId, blocked_id: uid })
+    .then(function(res) {
+      if (res && res.error) { try { console.warn('momnts block failed:', res.error.message); } catch (e) {} socialToast('Couldn’t block — try again.'); return; }
+      _pvBlocked = true;
+      delete _followState[uid];   // the trigger severed the follow server-side
+      if (_pvUid === uid) viewProfile(uid);   // re-render the profile in blocked state
+      socialToast('Account blocked.');
+    })
+    .catch(function() { socialToast('Couldn’t block — try again.'); });
+}
+function unblockUser(uid) {
+  if (!supa || !userId || !uid) return;
+  supa.from('blocks').delete().eq('blocker_id', userId).eq('blocked_id', uid)
+    .then(function(res) {
+      if (res && res.error) { try { console.warn('momnts unblock failed:', res.error.message); } catch (e) {} socialToast('Couldn’t unblock — try again.'); return; }
+      _pvBlocked = false;
+      // Refresh whichever view is open.
+      if (_pvUid === uid) viewProfile(uid);
+      var bm = document.getElementById('blocked-modal');
+      if (bm && bm.classList.contains('on')) renderBlockedList();
+      socialToast('Account unblocked.');
+    })
+    .catch(function() { socialToast('Couldn’t unblock — try again.'); });
+}
+
+// ── Blocked-accounts management list (from the Account panel) ──────────
+function openBlocked() {
+  var m = document.getElementById('blocked-modal');
+  if (m) m.classList.add('on');
+  renderBlockedList();
+}
+function closeBlocked() {
+  var m = document.getElementById('blocked-modal');
+  if (m) m.classList.remove('on');
+}
+function blkNote(msg) {
+  var el = document.getElementById('blk-list');
+  if (el) el.innerHTML = '<div class="pr-note">' + escMomnt(msg) + '</div>';
+}
+function renderBlockedList() {
+  if (!supa || !userId) { blkNote('Sign in to manage blocked accounts.'); return; }
+  blkNote('Loading…');
+  supa.from('blocks').select('blocked_id,created_at').eq('blocker_id', userId).order('created_at', { ascending: false })
+    .then(function(res) {
+      if (res && res.error) { blkNote('Couldn’t load your blocked accounts.'); try { console.warn('momnts blocked list failed:', res.error.message); } catch (e) {} return; }
+      var rows = (res && res.data) || [];
+      if (!rows.length) { blkNote('You haven’t blocked anyone.'); return; }
+      var ids = rows.map(function(r) { return r.blocked_id; });
+      supa.from('profiles').select('user_id,username,display_name,avatar,games_count,momnts_count').in('user_id', ids)
+        .then(function(pr) {
+          var byId = {};
+          ((pr && pr.data) || []).forEach(function(p) { byId[p.user_id] = p; });
+          var el = document.getElementById('blk-list');
+          if (!el) return;
+          el.innerHTML = ids.map(function(id) {
+            return blockedRowHTML(byId[id] || { user_id: id, username: '', display_name: '(unknown user)' });
+          }).join('');
+        })
+        .catch(function() { blkNote('Couldn’t load your blocked accounts.'); });
+    })
+    .catch(function() { blkNote('Couldn’t load your blocked accounts.'); });
+}
+function blockedRowHTML(p) {
+  return '<div class="pr-row" id="blk-row-' + p.user_id + '">' + personCellHTML(p, false)
+    + '<div class="pr-action"><button class="pr-fbtn following" type="button" onclick="unblockFromList(\'' + p.user_id + '\')">Unblock</button></div>'
+    + '</div>';
+}
+function unblockFromList(uid) {
+  var row = document.getElementById('blk-row-' + uid);
+  var btn = row ? row.querySelector('button') : null;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  unblockUser(uid);
 }
 
 // ── SOCIAL PHASE B: tagging (send a pre-filled game/momnt to a friend) ─
