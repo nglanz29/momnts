@@ -3351,54 +3351,53 @@ function apSearch(val) {
 }
 
 async function apDoSearch(q) {
-  const sportMap = { nfl:'football/nfl', mlb:'baseball/mlb', nba:'basketball/nba', nhl:'hockey/nhl' };
-  const sport = sportMap[apLeague];
+  // ESPN's per-sport athletes?search endpoint was retired (returns "invalid URI"),
+  // so use the general site search and filter to the selected pro league.
+  const leagueSlug = apLeague;
   try {
-    const res = await fetch('https://site.api.espn.com/apis/common/v3/sports/' + sport + '/athletes?search=' + encodeURIComponent(q) + '&limit=12&active=true');
+    const res = await fetch('https://site.web.api.espn.com/apis/common/v3/search?query=' + encodeURIComponent(q) + '&limit=30&mode=prefix&type=player');
     const data = await res.json();
     document.getElementById('ap-loading').style.display = 'none';
-    const athletes = (data.athletes || data.items || []).slice(0, 12);
-    if (!athletes.length) {
-      document.getElementById('ap-results').innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0;">No results found. Try a different name.</div>';
+    var items = (data.items || []).filter(function(it){
+      if (it.type && it.type !== 'player') return false;
+      if (it.defaultLeagueSlug === leagueSlug) return true;
+      var lrs = it.leagueRelationships || [];
+      return lrs.some(function(lr){ return lr.core && lr.core.slug === leagueSlug; });
+    }).slice(0, 12);
+    const resultsEl = document.getElementById('ap-results');
+    if (!items.length) {
+      resultsEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0;">No ' + apLeague.toUpperCase() + ' players found. Make sure the right league is selected above, or try another spelling.</div>';
       return;
     }
-    const resultsEl = document.getElementById('ap-results');
     resultsEl.innerHTML = '';
-    athletes.forEach(a => {
-      const athlete = a.athlete || a;
-      const id = athlete.id;
-      const name = athlete.displayName || athlete.fullName || athlete.name || '';
-      const pos = athlete.position && (athlete.position.abbreviation || athlete.position.name) || '';
-      const team = athlete.team && athlete.team.displayName || '';
-      const shotUrl = espnShot(apLeague, id);
-      const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    items.forEach(function(it){
+      const id = it.id;
+      const name = it.displayName || it.shortName || '';
+      const team = (it.teamRelationships && it.teamRelationships[0] && it.teamRelationships[0].core && it.teamRelationships[0].core.displayName) || '';
+      const pos = '';
+      const shotUrl = (it.headshot && it.headshot.href) || espnShot(apLeague, id);
+      const initials = name.split(' ').map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
 
       const row = document.createElement('div');
       row.className = 'ap-result';
-      row.innerHTML = `
-        <div class="ap-result-shot" id="apshot-${id}">
-          ${shotUrl ? '<img src="'+shotUrl+'" alt="'+name+'" data-initials="'+initials+'" data-fallback-id="apshot-'+id+'" onerror="pfgAvatarFallback(this)" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : initials}
-        </div>
-        <div>
-          <div class="ap-result-name">${name}</div>
-          <div class="ap-result-info">${apLeague.toUpperCase()}${pos ? ' · ' + pos : ''}${team ? ' · ' + team : ''}</div>
-        </div>`;
-      row.addEventListener('click', () => {
-        document.querySelectorAll('.ap-result').forEach(r => r.classList.remove('on'));
+      row.innerHTML = '<div class="ap-result-shot" id="apshot-' + id + '">'
+        + (shotUrl ? '<img src="'+shotUrl+'" alt="'+escMomnt(name)+'" data-initials="'+initials+'" data-fallback-id="apshot-'+id+'" onerror="pfgAvatarFallback(this)" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : initials)
+        + '</div><div><div class="ap-result-name">'+escMomnt(name)+'</div><div class="ap-result-info">'+apLeague.toUpperCase()+(team?' · '+escMomnt(team):'')+'</div></div>';
+      row.addEventListener('click', function(){
+        document.querySelectorAll('.ap-result').forEach(function(r){ r.classList.remove('on'); });
         row.classList.add('on');
-        apSelected = { id: 'p'+id, sport: apLeague, espnId: id, name, team, pos, seen: 1, badge: '' };
-        // Show confirm panel
+        apSelected = { id: 'p'+id, sport: apLeague, espnId: id, name: name, team: team, pos: pos, seen: 1, badge: '' };
         const selEl = document.getElementById('ap-selected');
         selEl.style.display = 'block';
         document.getElementById('ap-sel-name').textContent = name;
-        document.getElementById('ap-sel-info').textContent = `${apLeague.toUpperCase()}${pos ? ' · '+pos : ''}${team ? ' · '+team : ''}`;
+        document.getElementById('ap-sel-info').textContent = apLeague.toUpperCase() + (team ? ' · '+team : '');
         document.getElementById('ap-times').value = '1';
         document.getElementById('ap-hof').value = '';
         const av = document.getElementById('ap-sel-avatar');
         if (shotUrl) {
           av.innerHTML = '<img src="'+shotUrl+'" data-initials="'+initials+'" data-fg="var(--text2)" onload="this.style.opacity=1" onerror="avatarFallback(this)" style="width:100%;height:100%;object-fit:cover;border-radius:50%;opacity:0;transition:opacity .2s;">';
         } else {
-          av.innerHTML = `<span style="font-size:16px;font-weight:700;color:var(--text2)">${initials}</span>`;
+          av.innerHTML = '<span style="font-size:16px;font-weight:700;color:var(--text2)">'+initials+'</span>';
         }
       });
       resultsEl.appendChild(row);
@@ -5139,25 +5138,28 @@ function pfgSearch(val) {
 
 async function pfgDoSearch(q) {
   if (!pfgPrefillSnap) return;
-  const sportMap2 = { NFL:'football/nfl', MLB:'baseball/mlb', NBA:'basketball/nba', NHL:'hockey/nhl' };
-  const sport2 = sportMap2[pfgPrefillSnap.league];
   const sportKey2 = pfgPrefillSnap.league.toLowerCase();
   const res = document.getElementById('pfg-search-results');
   res.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 0;">Searching...</div>';
   try {
-    const r = await fetch('https://site.api.espn.com/apis/common/v3/sports/' + sport2 + '/athletes?search=' + encodeURIComponent(q) + '&limit=8&active=true');
+    // ESPN's per-sport athletes?search endpoint was retired; use the general search.
+    const r = await fetch('https://site.web.api.espn.com/apis/common/v3/search?query=' + encodeURIComponent(q) + '&limit=30&mode=prefix&type=player');
     const data = await r.json();
-    const athletes = (data.athletes || data.items || []).slice(0, 8);
+    var items = (data.items || []).filter(function(it){
+      if (it.type && it.type !== 'player') return false;
+      if (it.defaultLeagueSlug === sportKey2) return true;
+      var lrs = it.leagueRelationships || [];
+      return lrs.some(function(lr){ return lr.core && lr.core.slug === sportKey2; });
+    }).slice(0, 8);
     res.innerHTML = '';
-    if (!athletes.length) { res.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 0;">No results</div>'; return; }
-    athletes.forEach(function(a) {
-      const athlete = a.athlete || a.item || a;
-      const eid = athlete.id;
-      const name2 = athlete.displayName || athlete.fullName || '';
-      const pos2 = (athlete.position && (athlete.position.abbreviation || '')) || '';
-      const team2 = (athlete.team && athlete.team.displayName) || '';
+    if (!items.length) { res.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 0;">No results</div>'; return; }
+    items.forEach(function(it) {
+      const eid = it.id;
+      const name2 = it.displayName || it.shortName || '';
+      const pos2 = '';
+      const team2 = (it.teamRelationships && it.teamRelationships[0] && it.teamRelationships[0].core && it.teamRelationships[0].core.displayName) || '';
       const initials2 = name2.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-      const shotUrl2 = espnShot(sportKey2, eid);
+      const shotUrl2 = (it.headshot && it.headshot.href) || espnShot(sportKey2, eid);
       const row2 = document.createElement('div');
       row2.className = 'pfg-row';
       const shotHtml2 = shotUrl2
