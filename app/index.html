@@ -364,6 +364,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 
 .vgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
 @media(max-width:560px){.vgrid{grid-template-columns:1fr;}}
+.stad-sec{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+.stad-count{font-size:11px;font-weight:600;color:var(--text3);}
+.stad-chev{margin-left:auto;color:var(--text3);transition:transform .2s;flex-shrink:0;}
+.stad-sec.collapsed .stad-chev{transform:rotate(-90deg);}
+.vgrid.collapsed{display:none;}
 .vcard{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);padding:13px 15px;cursor:pointer;transition:border-color .15s;display:flex;gap:11px;align-items:flex-start;}
 .vcard:hover{border-color:var(--border2);}
 .vcard.vis{border-left:3px solid var(--teal);}
@@ -1012,6 +1017,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="hamburger" onclick="toggleNav()" aria-label="Open menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
   <img id="mobile-logo-img" alt="momnts home" onclick="go('home')" style="height:24px;width:auto;display:block;cursor:pointer;">
   <button class="mh-bell" onclick="openNotifs()" aria-label="Notifications" style="margin-left:auto;background:none;border:none;color:var(--text2);cursor:pointer;position:relative;padding:4px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="mh-bell-badge" id="notif-badge-mobile" style="display:none;"></span></button>
+  <div class="avatar mh-avatar" id="mh-avatar" onclick="openProfile()" title="Account" style="width:28px;height:28px;font-size:11px;cursor:pointer;">?</div>
 </header>
 <div class="nav-backdrop" onclick="closeNav()"></div>
 
@@ -1207,13 +1213,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
   </div>
-  <div class="lbl">Venues visited</div>
+  <div class="lbl stad-sec" id="venues-hdr" onclick="toggleStadSection('venues-grid',this)">Venues visited<span class="stad-count" id="venues-count"></span><svg class="stad-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div>
   <div class="vgrid" id="venues-grid">
     <div style="color:var(--text3);font-size:13px;padding:8px 0;">No venues visited yet — log a game to mark a stadium.</div>
   </div>
   <div class="lbl" id="bucket-lbl" style="display:none;">On your bucket list</div>
   <div class="vgrid" id="bucket-grid"></div>
-  <div class="lbl">Stadiums left to conquer</div>
+  <div class="lbl stad-sec" id="left-hdr" onclick="toggleStadSection('left-grid',this)">Stadiums left to conquer<span class="stad-count" id="left-count"></span><svg class="stad-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></div>
   <div class="vgrid" id="left-grid"></div>
 </div>
 
@@ -5366,6 +5372,25 @@ function renderVenues() {
       }).join('');
     }
   }
+
+  // Section counts + first-render mobile collapse (keeps the long page manageable).
+  var vc = document.getElementById('venues-count'); if (vc) vc.textContent = visitedPins.length ? '· ' + visitedPins.length : '';
+  var lc = document.getElementById('left-count'); if (lc) lc.textContent = leftPins.length ? '· ' + leftPins.length : '';
+  if (!_stadCollapseInit) {
+    _stadCollapseInit = true;
+    if (window.innerWidth <= 560) collapseStadSection('left-grid', 'left-hdr');
+  }
+}
+
+var _stadCollapseInit = false;
+function toggleStadSection(gridId, hdrEl) {
+  var grid = document.getElementById(gridId);
+  if (grid) grid.classList.toggle('collapsed');
+  if (hdrEl) hdrEl.classList.toggle('collapsed');
+}
+function collapseStadSection(gridId, hdrId) {
+  var grid = document.getElementById(gridId); if (grid) grid.classList.add('collapsed');
+  var hdr = document.getElementById(hdrId); if (hdr) hdr.classList.add('collapsed');
 }
 
 function toggleBucket(pinId, e) {
@@ -5850,8 +5875,9 @@ function applyUser() {
   var initSrc = (userFirstName.charAt(0) || '') + (userLastName.charAt(0) || '');
   const initials = (initSrc || name.slice(0,2)).toUpperCase();
   document.getElementById('sb-name').textContent = name;
-  var av = document.getElementById('sb-avatar');
-  if (av) {
+  // Sync both the sidebar avatar and the mobile-header avatar (top-right).
+  [document.getElementById('sb-avatar'), document.getElementById('mh-avatar')].forEach(function(av) {
+    if (!av) return;
     if (userAvatar) {
       av.textContent = '';
       av.style.backgroundImage = 'url(' + userAvatar + ')';
@@ -5861,7 +5887,7 @@ function applyUser() {
       av.style.backgroundImage = '';
       av.textContent = initials;
     }
-  }
+  });
   document.getElementById('home-title').textContent = 'your dashboard';
   document.getElementById('home-sub').textContent = 'welcome back, ' + name + '.';
   // Show @handle in the sidebar if set
