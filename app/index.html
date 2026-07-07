@@ -2086,6 +2086,16 @@ function renderPins() {
   const ns = 'http://www.w3.org/2000/svg';
   const R = 11;
 
+  // Ensure the reusable grayscale filter for unvisited-stadium logos exists.
+  if (svg && !document.getElementById('pin-gray')) {
+    var fdefs = document.createElementNS(ns, 'defs');
+    var filt = document.createElementNS(ns, 'filter');
+    filt.setAttribute('id', 'pin-gray');
+    var cm = document.createElementNS(ns, 'feColorMatrix');
+    cm.setAttribute('type', 'saturate'); cm.setAttribute('values', '0');
+    filt.appendChild(cm); fdefs.appendChild(filt); svg.appendChild(fdefs);
+  }
+
   // 1) Project every in-scope pin to its true map position.
   var nodes = [];
   PINS.forEach(function(pin){
@@ -2172,8 +2182,11 @@ function renderPins() {
       im.setAttribute('width',(R-1)*2); im.setAttribute('height',(R-1)*2);
       im.setAttribute('clip-path','url(#'+clipId+')');
       im.setAttribute('preserveAspectRatio','xMidYMid meet');
-      if (!vis && !isBucket) im.setAttribute('style','filter:grayscale(1) opacity(0.3)');
-      else if (isBucket) im.setAttribute('style','filter:opacity(0.85)');
+      im.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href',logo);   // older mobile Safari needs xlink:href
+      // Use SVG-native filter/opacity attributes (mobile Safari renders these far
+      // more reliably than CSS `filter` on an <image>). Unvisited = grayscale + dim.
+      if (!vis && !isBucket) { im.setAttribute('filter','url(#pin-gray)'); im.setAttribute('opacity','0.5'); }
+      else if (isBucket) im.setAttribute('opacity','0.9');
       g.appendChild(im);
 
       // Transparent hit area larger than visible pin
@@ -4455,15 +4468,32 @@ function shareStub() {
         return canvas;
       }
 
-      function finishWithBlob(blob){
+      function resetBtn(label){ btn.innerHTML = label; setTimeout(function(){ btn.innerHTML=origHtml; btn.style.pointerEvents='all'; }, 1800); }
+      function downloadBlob(blob, fname){
         var url = URL.createObjectURL(blob);
         var a = document.createElement('a');
-        var safe = (g.awayTeam+'-at-'+g.homeTeam).replace(/[^a-z0-9]+/gi,'-').toLowerCase();
-        a.href = url; a.download = 'momnts-'+safe+'.png';
+        a.href = url; a.download = fname;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        btn.innerHTML = '✓ Saved!';
-        setTimeout(function(){ btn.innerHTML=origHtml; btn.style.pointerEvents='all'; }, 1800);
+      }
+      function finishWithBlob(blob){
+        var safe = (g.awayTeam+'-at-'+g.homeTeam).replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+        var fname = 'momnts-'+safe+'.png';
+        var file = null;
+        try { file = new File([blob], fname, { type:'image/png' }); } catch(e){}
+        // On phones, prefer the native share sheet (Save Image / share to apps) —
+        // a.download is unreliable on iOS Safari. Fall back to a download otherwise.
+        if (file && navigator.share && navigator.canShare && navigator.canShare({ files:[file] })) {
+          navigator.share({ files:[file], title:'momnts', text:g.awayTeam+' @ '+g.homeTeam })
+            .then(function(){ resetBtn('✓ Shared!'); })
+            .catch(function(err){
+              if (err && err.name === 'AbortError') { btn.innerHTML=origHtml; btn.style.pointerEvents='all'; return; } // cancelled
+              downloadBlob(blob, fname); resetBtn('✓ Saved!');
+            });
+          return;
+        }
+        downloadBlob(blob, fname);
+        resetBtn('✓ Saved!');
       }
 
       function exportCanvas(canvas, allowFallback){
