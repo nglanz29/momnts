@@ -696,7 +696,12 @@ textarea.mi{resize:none;height:68px;}
 .pm-title{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:-.3px;}
 .pm-x{background:none;border:none;color:var(--text3);font-size:24px;line-height:1;cursor:pointer;padding:0 4px;}
 .pm-x:hover{color:var(--text);}
-.pm-email{font-size:12px;color:var(--text3);margin-bottom:16px;word-break:break-all;}
+.pm-email{font-size:12px;color:var(--text3);margin-bottom:12px;word-break:break-all;}
+.pm-follow-row{display:flex;gap:10px;margin-bottom:16px;}
+.pm-follow-stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:11px 8px;cursor:pointer;font-family:inherit;}
+.pm-follow-stat:hover{border-color:var(--accent);}
+.pm-follow-num{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text);}
+.pm-follow-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);}
 .pm-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin:12px 0 6px;}
 .pm-av-row{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
 .pm-av{width:56px;height:56px;border-radius:50%;background:var(--bg4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--text2);background-size:cover;background-position:center;overflow:hidden;}
@@ -855,6 +860,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="pm-x" type="button" onclick="closeProfile()" aria-label="Close">&times;</button>
     </div>
     <div class="pm-email" id="pm-email">—</div>
+    <div class="pm-follow-row">
+      <button class="pm-follow-stat" type="button" onclick="openFollowList(userId,'followers')"><span class="pm-follow-num" id="pm-followers">0</span><span class="pm-follow-lbl">followers</span></button>
+      <button class="pm-follow-stat" type="button" onclick="openFollowList(userId,'following')"><span class="pm-follow-num" id="pm-following">0</span><span class="pm-follow-lbl">following</span></button>
+    </div>
     <div class="pm-av-row">
       <div class="pm-av" id="pm-av-preview">?</div>
       <div class="pm-av-actions">
@@ -939,6 +948,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button class="pm-x" type="button" onclick="closeProfileView()" aria-label="Close">&times;</button>
     </div>
     <div id="pv-body"><div class="pr-note">Loading…</div></div>
+  </div>
+</div>
+
+<!-- FOLLOWERS / FOLLOWING LIST -->
+<div id="follow-list-modal" class="pm-overlay" onclick="if(event.target===this)closeFollowList()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title" id="fl-title">Followers</div>
+      <button class="pm-x" type="button" onclick="closeFollowList()" aria-label="Close">&times;</button>
+    </div>
+    <div class="pr-list" id="fl-list"></div>
   </div>
 </div>
 
@@ -6403,6 +6423,7 @@ function openProfile() {
   pmAvatar = userAvatar || '';
   renderPmAvatar();
   setProfileMsg('');
+  loadFollowCounts();
   // Privacy flag lives only in the DB (profiles.is_private) — fetch the current
   // value and reflect it in the toggle. Default off until it loads.
   pmPrivate = false;
@@ -7068,6 +7089,59 @@ function unblockFromList(uid) {
   var btn = row ? row.querySelector('button') : null;
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   unblockUser(uid);
+}
+
+// ── SOCIAL: follower / following counts + lists (your own account) ─────
+// RLS lets you read the follow rows you're part of, so your own follower and
+// following lists/counts are fully accurate.
+function loadFollowCounts() {
+  if (!supa || !userId) return;
+  supa.from('follows').select('following_id', { count: 'exact', head: true }).eq('following_id', userId).eq('status', 'accepted')
+    .then(function(res) { var el = document.getElementById('pm-followers'); if (el && res && !res.error) el.textContent = res.count || 0; })
+    .catch(function() {});
+  supa.from('follows').select('follower_id', { count: 'exact', head: true }).eq('follower_id', userId).eq('status', 'accepted')
+    .then(function(res) { var el = document.getElementById('pm-following'); if (el && res && !res.error) el.textContent = res.count || 0; })
+    .catch(function() {});
+}
+function closeFollowList() {
+  var m = document.getElementById('follow-list-modal');
+  if (m) m.classList.remove('on');
+}
+function flNote(msg) {
+  var el = document.getElementById('fl-list');
+  if (el) el.innerHTML = '<div class="pr-note">' + escMomnt(msg) + '</div>';
+}
+// mode = 'followers' (people who follow uid) | 'following' (people uid follows)
+function openFollowList(uid, mode) {
+  if (!supa || !uid) return;
+  var m = document.getElementById('follow-list-modal');
+  if (m) m.classList.add('on');
+  var title = document.getElementById('fl-title');
+  if (title) title.textContent = mode === 'following' ? 'Following' : 'Followers';
+  flNote('Loading…');
+  var col = mode === 'following' ? 'following_id' : 'follower_id';
+  var matchCol = mode === 'following' ? 'follower_id' : 'following_id';
+  supa.from('follows').select(col).eq(matchCol, uid).eq('status', 'accepted')
+    .then(function(res) {
+      if (res && res.error) { flNote('Couldn’t load this list.'); try { console.warn('momnts follow list failed:', res.error.message); } catch (e) {} return; }
+      var ids = ((res && res.data) || []).map(function(r) { return r[col]; }).filter(function(x) { return x && x !== userId; });
+      if (!ids.length) { flNote(mode === 'following' ? 'Not following anyone yet.' : 'No followers yet.'); return; }
+      supa.from('profiles').select('user_id,username,display_name,avatar,is_private,games_count,momnts_count').in('user_id', ids)
+        .then(function(pr) {
+          var people = (pr && pr.data) || [];
+          if (!people.length) { flNote('Couldn’t load these profiles.'); return; }
+          var pids = people.map(function(p) { _peoplePriv[p.user_id] = !!p.is_private; delete _followState[p.user_id]; return p.user_id; });
+          supa.from('follows').select('following_id,status').eq('follower_id', userId).in('following_id', pids)
+            .then(function(fr) {
+              if (fr && !fr.error && fr.data) fr.data.forEach(function(f) { _followState[f.following_id] = f.status; });
+              var el = document.getElementById('fl-list');
+              if (el) el.innerHTML = people.map(peopleRowHTML).join('');
+            })
+            .catch(function() { var el = document.getElementById('fl-list'); if (el) el.innerHTML = people.map(peopleRowHTML).join(''); });
+        })
+        .catch(function() { flNote('Couldn’t load these profiles.'); });
+    })
+    .catch(function() { flNote('Couldn’t load this list.'); });
 }
 
 // ── SOCIAL PHASE C: mute / unmute (client-side filter, not a hard block) ─
