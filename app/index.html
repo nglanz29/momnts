@@ -2517,6 +2517,9 @@ function applyGameEdits() {
   g.opponent = opp;
   g.homeAway = curHomeAway;
   g.neutral = curNeutral;
+  // If the user typed a score, treat it as authoritative so the auto-refetch
+  // never overwrites their correction on a schedule-linked (eventId) game.
+  if (scoreHome !== '' || scoreAway !== '') g.manualScore = true;
   // Recompute canonical home/away teams + scores from the edited opponent/side.
   var myTeam = g.myTeam || g.team || '';
   if (curHomeAway === 'home') { g.homeTeam = myTeam; g.awayTeam = opp; g.homeScore = scoreHome; g.awayScore = scoreAway; g.scoreUs = scoreHome; g.scoreThem = scoreAway; }
@@ -5084,7 +5087,7 @@ function refetchGameResult(game, cb) {
 function refetchIncompleteGames() {
   var today = new Date().toISOString().slice(0, 10);
   var pending = savedGames.filter(function(g){
-    return g && !g.completed && g.eventId && g.league && (g.date || '') <= today;
+    return g && !g.completed && !g.manualScore && g.eventId && g.league && (g.date || '') <= today;
   });
   if (!pending.length) return;
   var remaining = pending.length, changed = false;
