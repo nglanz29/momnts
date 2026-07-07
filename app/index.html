@@ -747,7 +747,8 @@ textarea.mi{resize:none;height:68px;}
 .pv-team{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 12px 5px 6px;font-size:12px;font-weight:600;}
 .pv-team img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
 .pv-empty-teams{font-size:12px;color:var(--text3);}
-.pv-more{display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+.pv-more{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+.pv-more-btn{min-width:88px;}
 .pv-more-btn{flex:1;background:none;border:1px solid var(--border2);border-radius:9px;padding:9px;color:var(--text2);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;}
 .pv-more-btn:hover{border-color:var(--text3);color:var(--text);}
 .pv-more-btn.danger:hover{border-color:#ff6b6b;color:#ff6b6b;}
@@ -6293,6 +6294,8 @@ var _followState = {};   // uid -> 'accepted' | 'pending' (absent = not followin
 var _peoplePriv = {};    // uid -> is_private (drives Follow-vs-Request label)
 var _pvUid = '';         // uid currently shown in the view-a-profile modal
 var _pvBlocked = false;  // whether the viewer has blocked the shown profile
+var _pvMuted = false;    // whether the viewer has muted the shown profile
+var _mutedIds = {};      // uid -> true; muted actors, filtered from tags + notifications
 
 function openPeople() {
   var m = document.getElementById('people-modal');
@@ -6555,11 +6558,13 @@ function viewProfile(uid) {
       // Pull my follow status + whether I've blocked them, so the actions are accurate.
       Promise.all([
         supa.from('follows').select('status').eq('follower_id', userId).eq('following_id', uid).maybeSingle(),
-        supa.from('blocks').select('blocked_id').eq('blocker_id', userId).eq('blocked_id', uid).maybeSingle()
+        supa.from('blocks').select('blocked_id').eq('blocker_id', userId).eq('blocked_id', uid).maybeSingle(),
+        supa.from('mutes').select('muted_id').eq('muter_id', userId).eq('muted_id', uid).maybeSingle()
       ]).then(function(rs) {
-        var fr = rs[0], br = rs[1];
+        var fr = rs[0], br = rs[1], mr = rs[2];
         if (fr && !fr.error && fr.data) _followState[uid] = fr.data.status; else delete _followState[uid];
         _pvBlocked = !!(br && !br.error && br.data);
+        _pvMuted = !!(mr && !mr.error && mr.data);
         if (_pvUid === uid) renderProfileView(p);
       }).catch(function() { if (_pvUid === uid) renderProfileView(p); });
     })
@@ -6598,9 +6603,13 @@ function renderProfileView(p) {
     ? '<div class="pv-blocked-note">You’ve blocked this account. They can’t follow, tag, or find you.</div>'
     : '<div class="pv-action" id="pv-action">' + followBtnHTML(uid) + '</div>';
   var reportBtn = '<button class="pv-more-btn danger" type="button" onclick="openReport(\'' + uid + '\',\'' + nameArg + '\')">Report</button>';
+  var muteBtn = _pvMuted
+    ? '<button class="pv-more-btn" type="button" onclick="unmuteUser(\'' + uid + '\')">Unmute</button>'
+    : '<button class="pv-more-btn" type="button" onclick="muteUser(\'' + uid + '\')">Mute</button>';
+  // A blocked account is already fully cut off, so muting it is redundant — hide it.
   var moreRow = _pvBlocked
     ? '<div class="pv-more"><button class="pv-more-btn" type="button" onclick="unblockUser(\'' + uid + '\')">Unblock</button>' + reportBtn + '</div>'
-    : '<div class="pv-more"><button class="pv-more-btn danger" type="button" onclick="confirmBlock(\'' + uid + '\',\'' + nameArg + '\')">Block</button>' + reportBtn + '</div>';
+    : '<div class="pv-more"><button class="pv-more-btn danger" type="button" onclick="confirmBlock(\'' + uid + '\',\'' + nameArg + '\')">Block</button>' + muteBtn + reportBtn + '</div>';
   body.innerHTML =
       '<div class="pv-top">' + avBig
     +   '<div class="pv-id"><div class="pv-name">' + name + lock + '</div><div class="pv-handle">' + handle + '</div></div>'
@@ -6696,6 +6705,44 @@ function unblockFromList(uid) {
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   unblockUser(uid);
 }
+
+// ── SOCIAL PHASE C: mute / unmute (client-side filter, not a hard block) ─
+// Load the set of accounts you've muted so their tags/notifications can be
+// filtered out. Called on login and refreshed after mute changes.
+function loadMutes() {
+  if (!supa || !userId) return;
+  supa.from('mutes').select('muted_id').eq('muter_id', userId)
+    .then(function(res) {
+      if (res && !res.error && res.data) { _mutedIds = {}; res.data.forEach(function(r) { _mutedIds[r.muted_id] = true; }); }
+    })
+    .catch(function() {});
+}
+function muteUser(uid) {
+  if (!supa || !userId || !uid) return;
+  supa.from('mutes').insert({ muter_id: userId, muted_id: uid })
+    .then(function(res) {
+      if (res && res.error) { try { console.warn('momnts mute failed:', res.error.message); } catch (e) {} socialToast('Couldn’t mute — try again.'); return; }
+      _mutedIds[uid] = true;
+      _pvMuted = true;
+      if (_pvUid === uid) renderProfileView_refreshMore();
+      socialToast('Muted. Their tags won’t notify you.');
+    })
+    .catch(function() { socialToast('Couldn’t mute — try again.'); });
+}
+function unmuteUser(uid) {
+  if (!supa || !userId || !uid) return;
+  supa.from('mutes').delete().eq('muter_id', userId).eq('muted_id', uid)
+    .then(function(res) {
+      if (res && res.error) { try { console.warn('momnts unmute failed:', res.error.message); } catch (e) {} socialToast('Couldn’t unmute — try again.'); return; }
+      delete _mutedIds[uid];
+      _pvMuted = false;
+      if (_pvUid === uid) renderProfileView_refreshMore();
+      socialToast('Unmuted.');
+    })
+    .catch(function() { socialToast('Couldn’t unmute — try again.'); });
+}
+// Re-fetch + re-render the open profile so the mute/block buttons reflect new state.
+function renderProfileView_refreshMore() { if (_pvUid) viewProfile(_pvUid); }
 
 // ── SOCIAL PHASE C: report an account (reviewed in the dashboard) ──────
 var _reportUid = '';
@@ -6857,8 +6904,14 @@ function setTagBadge(n) {
 }
 function loadTagCount() {
   if (!supa || !userId) return;
-  supa.from('tag_requests').select('id', { count: 'exact', head: true }).eq('to_user', userId).eq('status', 'pending')
-    .then(function(res) { if (res && !res.error) setTagBadge(res.count || 0); })
+  // Fetch senders (not a head-count) so muted accounts can be excluded from the badge.
+  supa.from('tag_requests').select('from_user').eq('to_user', userId).eq('status', 'pending')
+    .then(function(res) {
+      if (res && !res.error) {
+        var n = ((res.data) || []).filter(function(r) { return !_mutedIds[r.from_user]; }).length;
+        setTagBadge(n);
+      }
+    })
     .catch(function() {});
 }
 function tagInboxNote(msg) {
@@ -6872,7 +6925,7 @@ function loadTags() {
   supa.from('tag_requests').select('id,from_user,kind,snapshot,note,created_at').eq('to_user', userId).eq('status', 'pending').order('created_at', { ascending: false })
     .then(function(res) {
       if (res && res.error) { tagInboxNote('Couldn’t load tags — try again.'); try { console.warn('momnts tags failed:', res.error.message); } catch (e) {} return; }
-      var rows = (res && res.data) || [];
+      var rows = ((res && res.data) || []).filter(function(r) { return !_mutedIds[r.from_user]; });   // hide muted senders
       setTagBadge(rows.length);
       if (!rows.length) { tagInboxNote('No tags right now. When a friend tags you in a game or momnt, it shows up here.'); return; }
       rows.forEach(function(r) { _tags[r.id] = r; });
@@ -7056,6 +7109,7 @@ function enterApp(session) {
     }
     LS.save('owner', userId);   // tag this browser's cache as owned by the current account
     syncProfile();   // create the public profile row on first social login (ports existing users), or refresh it
+    loadMutes();     // cache the accounts you've muted so tags/notifications can filter them
   });
 }
 
