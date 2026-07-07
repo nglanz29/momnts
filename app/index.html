@@ -924,6 +924,29 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
+<!-- REPORT AN ACCOUNT -->
+<div id="report-modal" class="pm-overlay" onclick="if(event.target===this)closeReport()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title">Report account</div>
+      <button class="pm-x" type="button" onclick="closeReport()" aria-label="Close">&times;</button>
+    </div>
+    <div class="tg-what" id="rp-what">—</div>
+    <label class="pm-label">Reason</label>
+    <select class="ob-input" id="rp-reason">
+      <option value="Spam">Spam</option>
+      <option value="Harassment or bullying">Harassment or bullying</option>
+      <option value="Impersonation">Impersonation</option>
+      <option value="Inappropriate content">Inappropriate content</option>
+      <option value="Other">Other</option>
+    </select>
+    <label class="pm-label">Details (optional)</label>
+    <textarea class="tg-note" id="rp-details" maxlength="500" placeholder="Anything that helps us understand what's going on."></textarea>
+    <div class="auth-msg" id="rp-msg" style="min-height:0;margin-bottom:2px;"></div>
+    <button class="ob-btn" type="button" id="rp-send" onclick="submitReport()">Submit report</button>
+  </div>
+</div>
+
 <!-- ONBOARDING OVERLAY -->
 <div id="onboarding">
   <div id="ob-box">
@@ -6574,9 +6597,10 @@ function renderProfileView(p) {
   var actionBlock = _pvBlocked
     ? '<div class="pv-blocked-note">You’ve blocked this account. They can’t follow, tag, or find you.</div>'
     : '<div class="pv-action" id="pv-action">' + followBtnHTML(uid) + '</div>';
+  var reportBtn = '<button class="pv-more-btn danger" type="button" onclick="openReport(\'' + uid + '\',\'' + nameArg + '\')">Report</button>';
   var moreRow = _pvBlocked
-    ? '<div class="pv-more"><button class="pv-more-btn" type="button" onclick="unblockUser(\'' + uid + '\')">Unblock</button></div>'
-    : '<div class="pv-more"><button class="pv-more-btn danger" type="button" onclick="confirmBlock(\'' + uid + '\',\'' + nameArg + '\')">Block</button></div>';
+    ? '<div class="pv-more"><button class="pv-more-btn" type="button" onclick="unblockUser(\'' + uid + '\')">Unblock</button>' + reportBtn + '</div>'
+    : '<div class="pv-more"><button class="pv-more-btn danger" type="button" onclick="confirmBlock(\'' + uid + '\',\'' + nameArg + '\')">Block</button>' + reportBtn + '</div>';
   body.innerHTML =
       '<div class="pv-top">' + avBig
     +   '<div class="pv-id"><div class="pv-name">' + name + lock + '</div><div class="pv-handle">' + handle + '</div></div>'
@@ -6671,6 +6695,45 @@ function unblockFromList(uid) {
   var btn = row ? row.querySelector('button') : null;
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   unblockUser(uid);
+}
+
+// ── SOCIAL PHASE C: report an account (reviewed in the dashboard) ──────
+var _reportUid = '';
+function openReport(uid, name) {
+  if (!supa || !userId) { alert('Sign in to report an account.'); return; }
+  _reportUid = uid;
+  var what = document.getElementById('rp-what');
+  if (what) what.textContent = 'Reporting ' + (name || 'this account');
+  var reason = document.getElementById('rp-reason'); if (reason) reason.selectedIndex = 0;
+  var det = document.getElementById('rp-details'); if (det) det.value = '';
+  setReportMsg('');
+  var btn = document.getElementById('rp-send'); if (btn) btn.disabled = false;
+  document.getElementById('report-modal').classList.add('on');
+}
+function closeReport() {
+  var m = document.getElementById('report-modal');
+  if (m) m.classList.remove('on');
+  _reportUid = '';
+}
+function setReportMsg(msg, ok) {
+  var el = document.getElementById('rp-msg');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('ok', !!ok);
+}
+function submitReport() {
+  if (!supa || !userId || !_reportUid) return;
+  var reason = document.getElementById('rp-reason').value || 'Other';
+  var details = (document.getElementById('rp-details').value || '').trim().slice(0, 500);
+  var btn = document.getElementById('rp-send'); if (btn) btn.disabled = true;
+  setReportMsg('Submitting…', true);
+  supa.from('reports').insert({ reporter_id: userId, reported_id: _reportUid, reason: reason, details: details || null })
+    .then(function(res) {
+      if (res && res.error) { if (btn) btn.disabled = false; setReportMsg('Couldn’t submit — try again.'); try { console.warn('momnts report failed:', res.error.message); } catch (e) {} return; }
+      setReportMsg('Thanks — we’ll review this report.', true);
+      setTimeout(closeReport, 1000);
+    })
+    .catch(function() { if (btn) btn.disabled = false; setReportMsg('Couldn’t submit — try again.'); });
 }
 
 // ── SOCIAL PHASE B: tagging (send a pre-filled game/momnt to a friend) ─
