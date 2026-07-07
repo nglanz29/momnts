@@ -786,6 +786,27 @@ textarea.mi{resize:none;height:68px;}
 .tg-row.on .tg-cb svg{opacity:1;}
 .pr-preview{font-size:12px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pr-note-txt{font-size:12px;color:var(--text2);margin-top:3px;font-style:italic;}
+/* Profile tab */
+.pfp-header{display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+.pfp-av{width:84px;height:84px;border-radius:50%;background:var(--bg4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:30px;color:var(--text2);background-size:cover;background-position:center;overflow:hidden;}
+.pfp-id{flex:1;min-width:0;}
+.pfp-name{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.5px;}
+.pfp-handle{font-size:14px;color:var(--text3);margin-top:2px;}
+.pfp-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.pfp-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 16px;color:var(--text);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;}
+.pfp-btn:hover{border-color:var(--accent);}
+.pfp-stats{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.pfp-stat{flex:1;min-width:70px;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:13px 8px;font-family:inherit;}
+button.pfp-stat{cursor:pointer;}
+button.pfp-stat:hover{border-color:var(--accent);}
+.pfp-num{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--text);}
+.pfp-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);}
+.pfp-sec-hdr{font-family:var(--font-ui);font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin:24px 0 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.pfp-link{color:var(--accent);cursor:pointer;font-weight:600;text-transform:none;letter-spacing:normal;font-size:12px;}
+.pfp-teams{display:flex;flex-wrap:wrap;gap:8px;}
+.pfp-team{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 13px 5px 6px;font-size:12.5px;font-weight:600;}
+.pfp-team img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
+.pfp-empty{font-size:13px;color:var(--text3);padding:4px 0;}
 /* Notifications */
 .ni-badge{margin-left:auto;background:var(--accent);color:#04120b;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
 .mh-bell-badge{position:absolute;top:0;right:0;min-width:8px;height:8px;background:var(--accent);border-radius:5px;padding:0 3px;font-size:9px;font-weight:800;color:#04120b;line-height:8px;display:flex;align-items:center;justify-content:center;}
@@ -1063,6 +1084,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="ni" onclick="go('players',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>players seen</button>
   <button class="ni" onclick="go('moments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>momnts</button>
   <button class="ni" onclick="go('myteams',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>my teams</button>
+  <button class="ni" onclick="go('profile',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>profile</button>
   <div class="snl">social</div>
   <button class="ni-social" onclick="openPeople();closeNav()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>find people</button>
   <button class="ni-social" onclick="openNotifs();closeNav()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>notifications<span class="ni-badge" id="notif-badge-side" style="display:none;">0</span></button>
@@ -1315,6 +1337,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <input type="file" id="import-file-input" accept="application/json,.json" style="display:none" onchange="importData(event)">
     </div>
   </div>
+</div>
+
+<!-- PROFILE -->
+<div id="profile" class="pg">
+  <div id="profile-body"></div>
 </div>
 
 <footer class="site-foot">
@@ -1962,9 +1989,9 @@ let mapReady = false;
 
 // ── TAB ROUTING (URL path per tab for GA4) ────────────────────────────
 // Internal tab id -> URL slug (home = the /app/ base, no slug).
-var TAB_SLUGS  = { home:'', log:'game-log', stadiums:'stadiums', records:'my-records', players:'players-seen', moments:'momnts', myteams:'my-teams' };
-var TAB_TITLES = { home:'Dashboard', log:'Game Log', stadiums:'Stadiums', records:'My Records', players:'Players Seen', moments:'Momnts', myteams:'My Teams' };
-var NAV_ORDER  = ['home','log','stadiums','records','players','moments','myteams']; // sidebar button order
+var TAB_SLUGS  = { home:'', log:'game-log', stadiums:'stadiums', records:'my-records', players:'players-seen', moments:'momnts', myteams:'my-teams', profile:'profile' };
+var TAB_TITLES = { home:'Dashboard', log:'Game Log', stadiums:'Stadiums', records:'My Records', players:'Players Seen', moments:'Momnts', myteams:'My Teams', profile:'Profile' };
+var NAV_ORDER  = ['home','log','stadiums','records','players','moments','myteams','profile']; // sidebar button order
 var SLUG_TABS  = {};
 Object.keys(TAB_SLUGS).forEach(function(k){ SLUG_TABS[TAB_SLUGS[k]] = k; });
 
@@ -2026,6 +2053,7 @@ function applyTab(id) {
   if (id === 'log') renderGameLog();
   if (id === 'moments') renderMoments();
   if (id === 'stadiums') { initMap(); renderVenues(); }
+  if (id === 'profile') renderProfile();
 }
 
 // User-initiated tab change: switch, push a clean URL, fire a pageview.
@@ -4172,6 +4200,66 @@ function shareMomnt() {
   } else { alert(text); }
 }
 
+// ── PROFILE TAB (your own public-facing profile) ──────────────────────
+function renderProfile() {
+  var host = document.getElementById('profile-body');
+  if (!host) return;
+  var name = escMomnt(userName || 'You');
+  var handle = userHandle ? '@' + userHandle : '';
+  var initSrc = (userFirstName.charAt(0) || '') + (userLastName.charAt(0) || '');
+  var initials = (initSrc || (userName || 'You').slice(0, 2)).toUpperCase();
+  var av = userAvatar
+    ? '<div class="pfp-av" style="background-image:url(' + userAvatar + ')"></div>'
+    : '<div class="pfp-av">' + escMomnt(initials) + '</div>';
+  var st = profileStats();   // { games_count, momnts_count, fav_teams }
+  var teams = st.fav_teams || [];
+  var teamsHtml = teams.length
+    ? teams.map(function(t){
+        var logo = t.logo ? '<img src="' + escMomnt(t.logo) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+        var tn = escMomnt(((t.city ? t.city + ' ' : '') + (t.name || '')).trim() || 'Team');
+        return '<div class="pfp-team">' + logo + '<span>' + tn + '</span></div>';
+      }).join('')
+    : '<div class="pfp-empty">No favorite teams yet — add some in <span class="pfp-link" onclick="go(\'myteams\',navButtonFor(\'myteams\'))">My Teams</span>.</div>';
+  var pinned = (savedMoments || []).filter(function(m){ return m.pinned; }).slice(0, 5);
+  var pinnedHtml = pinned.length
+    ? '<div class="pinned-row">' + pinned.map(momntCardHTML).join('') + '</div>'
+    : '<div class="pfp-empty">Pin momnts in <span class="pfp-link" onclick="go(\'moments\',navButtonFor(\'moments\'))">The Vault</span> to feature them here.</div>';
+  var recent = (savedGames || []).slice(0, 3);
+  var recentHtml = recent.length
+    ? '<div class="gl">' + recent.map(gameCardHtml).join('') + '</div>'
+    : '<div class="pfp-empty">No games logged yet.</div>';
+  host.innerHTML =
+      '<div class="pfp-header">' + av
+    +   '<div class="pfp-id"><div class="pfp-name">' + name + '</div>' + (handle ? '<div class="pfp-handle">' + escMomnt(handle) + '</div>' : '') + '</div>'
+    +   '<div class="pfp-actions"><button class="pfp-btn" type="button" onclick="openProfile()">Edit profile</button><button class="pfp-btn" type="button" onclick="shareProfile()">Share</button></div>'
+    + '</div>'
+    + '<div class="pfp-stats">'
+    +   '<button class="pfp-stat" type="button" onclick="openFollowList(userId,\'followers\')"><span class="pfp-num" id="pfp-followers">0</span><span class="pfp-lbl">followers</span></button>'
+    +   '<button class="pfp-stat" type="button" onclick="openFollowList(userId,\'following\')"><span class="pfp-num" id="pfp-following">0</span><span class="pfp-lbl">following</span></button>'
+    +   '<div class="pfp-stat"><span class="pfp-num">' + st.games_count + '</span><span class="pfp-lbl">games</span></div>'
+    +   '<div class="pfp-stat"><span class="pfp-num">' + st.momnts_count + '</span><span class="pfp-lbl">momnts</span></div>'
+    + '</div>'
+    + '<div class="pfp-sec-hdr">Favorite teams</div><div class="pfp-teams">' + teamsHtml + '</div>'
+    + '<div class="pfp-sec-hdr">Pinned momnts <span class="pfp-link" onclick="go(\'moments\',navButtonFor(\'moments\'))">The Vault →</span></div>' + pinnedHtml
+    + '<div class="pfp-sec-hdr">Recent games <span class="pfp-link" onclick="go(\'log\',navButtonFor(\'log\'))">Game log →</span></div>' + recentHtml;
+  loadProfileFollowCounts();
+}
+function loadProfileFollowCounts() {
+  if (!supa || !userId) return;
+  supa.from('follows').select('following_id', { count: 'exact', head: true }).eq('following_id', userId).eq('status', 'accepted')
+    .then(function(res){ var el = document.getElementById('pfp-followers'); if (el && res && !res.error) el.textContent = res.count || 0; }).catch(function(){});
+  supa.from('follows').select('follower_id', { count: 'exact', head: true }).eq('follower_id', userId).eq('status', 'accepted')
+    .then(function(res){ var el = document.getElementById('pfp-following'); if (el && res && !res.error) el.textContent = res.count || 0; }).catch(function(){});
+}
+function shareProfile() {
+  var url = 'https://momntsapp.com/app/';
+  var text = (userName || 'My') + ' on momnts' + (userHandle ? ' (@' + userHandle + ')' : '') + ' — ' + savedGames.length + ' games, ' + savedMoments.length + ' momnts.\n' + url;
+  if (navigator.share) { navigator.share({ title: 'momnts', text: text, url: url }).catch(function(){}); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ socialToast('Profile copied to clipboard.'); }).catch(function(){ alert(text); });
+  } else { alert(text); }
+}
+
 function renderMoments() {
   var el = document.getElementById('moments-list');
   if (!el) return;
@@ -6215,7 +6303,7 @@ function renderChecklist() {
 
 function clAction(page) {
   const navBtns = document.querySelectorAll('.ni');
-  const pages = ['home','log','stadiums','records','players','moments','myteams'];
+  const pages = ['home','log','stadiums','records','players','moments','myteams','profile'];
   const idx = pages.indexOf(page);
   go(page, idx >= 0 ? navBtns[idx] : null);
   // Smooth shortcuts: open the relevant creation flow directly
