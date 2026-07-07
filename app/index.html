@@ -1068,7 +1068,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="hamburger" onclick="toggleNav()" aria-label="Open menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
   <img id="mobile-logo-img" alt="momnts home" onclick="go('home')" style="height:24px;width:auto;display:block;cursor:pointer;">
   <button class="mh-bell" onclick="openNotifs()" aria-label="Notifications" style="margin-left:auto;background:none;border:none;color:var(--text2);cursor:pointer;position:relative;padding:4px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="mh-bell-badge" id="notif-badge-mobile" style="display:none;"></span></button>
-  <div class="avatar mh-avatar" id="mh-avatar" onclick="openProfile()" title="Account" style="width:28px;height:28px;font-size:11px;cursor:pointer;">?</div>
+  <div class="avatar mh-avatar" id="mh-avatar" onclick="go('profile',navButtonFor('profile'))" title="Profile" style="width:28px;height:28px;font-size:11px;cursor:pointer;">?</div>
 </header>
 <div class="nav-backdrop" onclick="closeNav()"></div>
 
@@ -2984,9 +2984,9 @@ var LEADERBOARD_DEFS = {
     { key:'tds',     label:'touchdowns', unit:'TD', statFn:function(t){ return (t.passTDs||0)+(t.rushTDs||0)+(t.recTDs||0); } }
   ],
   nba: [
-    { key:'pts', label:'points', unit:'PTS', statFn:function(t){ return t.pts||0; } },
-    { key:'reb', label:'rebounds', unit:'REB', statFn:function(t){ return t.reb||0; } },
-    { key:'ast', label:'assists', unit:'AST', statFn:function(t){ return t.ast||0; } }
+    { key:'pts', label:'points per game', unit:'PPG', avg:true, statFn:function(t){ return t.pts||0; } },
+    { key:'reb', label:'rebounds per game', unit:'RPG', avg:true, statFn:function(t){ return t.reb||0; } },
+    { key:'ast', label:'assists per game', unit:'APG', avg:true, statFn:function(t){ return t.ast||0; } }
   ],
   mlb: [
     { key:'h',   label:'hits', unit:'H', statFn:function(t){ return t.h||0; } },
@@ -3007,16 +3007,16 @@ function playerLeaderboards(sport, players) {
   var defs = LEADERBOARD_DEFS[sport] || [];
   // Precompute aggregate totals once per player
   var enriched = players.map(function(p){
-    return { p: p, totals: aggregateStats(p.sport, p.games || []) || {} };
+    return { p: p, totals: aggregateStats(p.sport, p.games || []) || {}, gc: (p.games || []).length || 1 };
   });
   var boards = [];
   defs.forEach(function(def){
     var rows = enriched
-      .map(function(e){ return { player: e.p, value: def.statFn(e.totals) }; })
+      .map(function(e){ var raw = def.statFn(e.totals); return { player: e.p, value: def.avg ? (raw / e.gc) : raw }; })
       .filter(function(r){ return r.value > 0; })
       .sort(function(a,b){ return b.value - a.value; })
       .slice(0, 3);
-    if (rows.length) boards.push({ label: def.label, unit: def.unit, rows: rows });
+    if (rows.length) boards.push({ label: def.label, unit: def.unit, avg: !!def.avg, rows: rows });
   });
   return boards;
 }
@@ -3080,6 +3080,26 @@ function renderPlayers() {
 
   document.getElementById('players-sub').textContent =
     playerList.length + ' athlete' + (playerList.length !== 1 ? 's' : '') + ' seen live.';
+
+  // Global search — runs even with an empty roster, and always offers manual add.
+  var sbEl = document.getElementById('pl-search');
+  var query = sbEl ? sbEl.value.trim().toLowerCase() : '';
+  if (query) {
+    var matches = playerList.filter(function(p){
+      return enabledLeagues.has((p.sport || '').toUpperCase()) && (p.name || '').toLowerCase().indexOf(query) > -1;
+    }).sort(function(a, b){
+      if ((b.seen || 0) !== (a.seen || 0)) return (b.seen || 0) - (a.seen || 0);
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    var addBtn = '<button class="abtn" style="margin-top:12px;" onclick="openAddPlayerPrefill(\'' + query.replace(/'/g, "\\'") + '\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add “' + escMomnt(query) + '” manually</button>';
+    if (matches.length) {
+      grid.innerHTML = '<div class="roster">' + matches.map(rosterCardHtml).join('') + '</div>'
+        + '<div style="margin-top:12px;color:var(--text3);font-size:12px;">Not who you meant? ' + addBtn + '</div>';
+    } else {
+      grid.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:14px 0;">No players found for “' + escMomnt(query) + '” in your roster. ' + addBtn + '</div>';
+    }
+    return;
+  }
 
   if (playerList.length === 0) {
     // Faux blurred roster behind an inspirational overlay (teaser for new users).
@@ -3153,7 +3173,7 @@ function renderPlayers() {
             + '<span class="lead-rank'+(i===0?' one':'')+'">'+(i+1)+'</span>'
             + playerAvatarHtml(r.player, 'lead-av')
             + '<span class="lead-nm" onclick="openPlayerDetail(\''+r.player.id+'\')" style="cursor:pointer;">'+r.player.name+'</span>'
-            + '<span class="lead-val">'+r.value.toLocaleString()+'<small>'+board.unit+'</small></span>'
+            + '<span class="lead-val">'+(board.avg ? r.value.toFixed(1) : r.value.toLocaleString())+'<small>'+board.unit+'</small></span>'
             + '</div>';
         });
         html += '</div>';
@@ -3294,6 +3314,15 @@ function openAddPlayer() {
 function closeAddPlayer() {
   const m = document.getElementById('ap-modal');
   m.style.opacity='0'; m.style.visibility='hidden'; m.style.pointerEvents='none';
+}
+
+// Open the add-player modal pre-filled with a search query (from Players-tab search).
+function openAddPlayerPrefill(query) {
+  openAddPlayer();
+  var q = query || '';
+  var inp = document.getElementById('ap-search');
+  if (inp) { inp.value = q; }
+  if (q) apSearch(q);
 }
 
 document.getElementById('ap-modal').addEventListener('click', function(e) {
