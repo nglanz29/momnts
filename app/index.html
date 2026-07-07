@@ -764,6 +764,17 @@ textarea.mi{resize:none;height:68px;}
 .tg-row.on .tg-cb svg{opacity:1;}
 .pr-preview{font-size:12px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pr-note-txt{font-size:12px;color:var(--text2);margin-top:3px;font-style:italic;}
+/* Notifications */
+.ni-badge{margin-left:auto;background:var(--accent);color:#04120b;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
+.mh-bell-badge{position:absolute;top:0;right:0;min-width:8px;height:8px;background:var(--accent);border-radius:5px;padding:0 3px;font-size:9px;font-weight:800;color:#04120b;line-height:8px;display:flex;align-items:center;justify-content:center;}
+.notif-row{display:flex;align-items:flex-start;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:background .12s;}
+.notif-row:hover{background:rgba(255,255,255,.04);}
+.notif-row.unread{background:rgba(31,181,116,.06);}
+.notif-meta{flex:1;min-width:0;}
+.notif-txt{font-size:13px;color:var(--text);line-height:1.4;}
+.notif-txt b{font-weight:700;}
+.notif-sub{font-size:12px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.notif-time{font-size:11px;color:var(--text3);flex-shrink:0;margin-top:2px;}
 </style>
 </head>
 <body>
@@ -948,6 +959,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </div>
 
+<!-- NOTIFICATIONS -->
+<div id="notif-modal" class="pm-overlay" onclick="if(event.target===this)closeNotifs()">
+  <div class="pm-card">
+    <div class="pm-head">
+      <div class="pm-title">Notifications</div>
+      <button class="pm-x" type="button" onclick="closeNotifs()" aria-label="Close">&times;</button>
+    </div>
+    <div class="pr-list" id="notif-list" style="max-height:60vh;"></div>
+  </div>
+</div>
+
 <!-- ONBOARDING OVERLAY -->
 <div id="onboarding">
   <div id="ob-box">
@@ -987,6 +1009,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <header class="mobile-header">
   <button class="hamburger" onclick="toggleNav()" aria-label="Open menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
   <img id="mobile-logo-img" alt="momnts home" onclick="go('home')" style="height:24px;width:auto;display:block;cursor:pointer;">
+  <button class="mh-bell" onclick="openNotifs()" aria-label="Notifications" style="margin-left:auto;background:none;border:none;color:var(--text2);cursor:pointer;position:relative;padding:4px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="mh-bell-badge" id="notif-badge-mobile" style="display:none;"></span></button>
 </header>
 <div class="nav-backdrop" onclick="closeNav()"></div>
 
@@ -1004,6 +1027,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="ni" onclick="go('myteams',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>my teams</button>
   <div class="snl">social</div>
   <button class="ni-social" onclick="openPeople();closeNav()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>find people</button>
+  <button class="ni-social" onclick="openNotifs();closeNav()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>notifications<span class="ni-badge" id="notif-badge-side" style="display:none;">0</span></button>
   <div class="sbottom">
     <div class="avatar" id="sb-avatar" onclick="openProfile()" style="cursor:pointer;" title="Account">?</div>
     <div style="flex:1;cursor:pointer;" onclick="openProfile()" title="Account"><div style="font-size:13px;font-weight:600;" id="sb-name">You</div><div style="font-size:11px;color:var(--text3);" id="sb-gamecount">0 games</div></div>
@@ -6296,6 +6320,7 @@ var _pvUid = '';         // uid currently shown in the view-a-profile modal
 var _pvBlocked = false;  // whether the viewer has blocked the shown profile
 var _pvMuted = false;    // whether the viewer has muted the shown profile
 var _mutedIds = {};      // uid -> true; muted actors, filtered from tags + notifications
+var _notifPoll = null;   // interval that refreshes the unread-notifications bell
 
 function openPeople() {
   var m = document.getElementById('people-modal');
@@ -6783,6 +6808,95 @@ function submitReport() {
     .catch(function() { if (btn) btn.disabled = false; setReportMsg('Couldn’t submit — try again.'); });
 }
 
+// ── SOCIAL PHASE C: notifications bell + feed ─────────────────────────
+function setNotifBadge(n) {
+  var side = document.getElementById('notif-badge-side');
+  if (side) { if (n > 0) { side.textContent = n > 99 ? '99+' : String(n); side.style.display = ''; } else side.style.display = 'none'; }
+  var mob = document.getElementById('notif-badge-mobile');
+  if (mob) { if (n > 0) { mob.textContent = n > 9 ? '9+' : String(n); mob.style.display = ''; } else mob.style.display = 'none'; }
+}
+// Unread count for the bell (excludes muted actors, so the badge matches the feed).
+function loadNotifCount() {
+  if (!supa || !userId) return;
+  supa.from('notifications').select('actor_id').eq('user_id', userId).eq('read', false).limit(100)
+    .then(function(res) {
+      if (res && !res.error) {
+        var n = ((res.data) || []).filter(function(r) { return !_mutedIds[r.actor_id]; }).length;
+        setNotifBadge(n);
+      }
+    })
+    .catch(function() {});
+}
+function openNotifs() {
+  var m = document.getElementById('notif-modal');
+  if (m) m.classList.add('on');
+  loadNotifs();
+}
+function closeNotifs() {
+  var m = document.getElementById('notif-modal');
+  if (m) m.classList.remove('on');
+}
+function loadNotifs() {
+  var el = document.getElementById('notif-list');
+  if (!supa || !userId) { if (el) el.innerHTML = '<div class="pr-note">Sign in to see notifications.</div>'; return; }
+  if (el) el.innerHTML = '<div class="pr-note">Loading…</div>';
+  supa.from('notifications').select('id,actor_id,type,data,read,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)
+    .then(function(res) {
+      if (res && res.error) { if (el) el.innerHTML = '<div class="pr-note">Couldn’t load notifications.</div>'; try { console.warn('momnts notifs failed:', res.error.message); } catch (e) {} return; }
+      var rows = ((res && res.data) || []).filter(function(n) { return !_mutedIds[n.actor_id]; });   // hide muted actors
+      if (!rows.length) { if (el) el.innerHTML = '<div class="pr-note">No notifications yet. Follows, requests, and tags will show up here.</div>'; setNotifBadge(0); return; }
+      if (el) el.innerHTML = rows.map(notifRowHTML).join('');
+      markNotifsRead();   // opening the feed clears the unread state
+    })
+    .catch(function() { if (el) el.innerHTML = '<div class="pr-note">Couldn’t load notifications.</div>'; });
+}
+function markNotifsRead() {
+  setNotifBadge(0);
+  if (!supa || !userId) return;
+  supa.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false)
+    .then(function() {}).catch(function() {});
+}
+function notifTimeAgo(iso) {
+  if (!iso) return '';
+  var t = new Date(iso).getTime();
+  if (isNaN(t)) return '';
+  var s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return 'now';
+  var m = Math.floor(s / 60); if (m < 60) return m + 'm';
+  var h = Math.floor(m / 60); if (h < 24) return h + 'h';
+  var d = Math.floor(h / 24); if (d < 7) return d + 'd';
+  var w = Math.floor(d / 7); if (w < 5) return w + 'w';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function notifText(n) {
+  var d = n.data || {};
+  var who = escMomnt(d.display_name || (d.username ? '@' + d.username : 'Someone'));
+  var handleSub = d.username ? '@' + d.username : '';
+  if (n.type === 'follow') return { main: '<b>' + who + '</b> started following you', sub: handleSub };
+  if (n.type === 'follow_request') return { main: '<b>' + who + '</b> requested to follow you', sub: 'Tap to review in Requests' };
+  if (n.type === 'follow_accept') return { main: '<b>' + who + '</b> accepted your follow request', sub: handleSub };
+  if (n.type === 'tag') return { main: '<b>' + who + '</b> tagged you in a ' + (d.kind === 'momnt' ? 'momnt' : 'game'), sub: d.preview || '' };
+  return { main: '<b>' + who + '</b> did something', sub: '' };
+}
+function notifRowHTML(n) {
+  var d = n.data || {};
+  var av;
+  if (d.avatar) { av = '<div class="pr-av" style="background-image:url(' + d.avatar + ')"></div>'; }
+  else { var s = (d.display_name || d.username || '?'); av = '<div class="pr-av">' + escMomnt(s.slice(0, 2).toUpperCase()) + '</div>'; }
+  var t = notifText(n);
+  return '<div class="notif-row' + (n.read ? '' : ' unread') + '" onclick="onNotifClick(\'' + (n.actor_id || '') + '\',\'' + n.type + '\')">'
+    + av
+    + '<div class="notif-meta"><div class="notif-txt">' + t.main + '</div>' + (t.sub ? '<div class="notif-sub">' + escMomnt(t.sub) + '</div>' : '') + '</div>'
+    + '<div class="notif-time">' + escMomnt(notifTimeAgo(n.created_at)) + '</div>'
+    + '</div>';
+}
+function onNotifClick(actor, type) {
+  closeNotifs();
+  if (type === 'follow_request') { openPeople(); peopleTab('requests'); }
+  else if (type === 'tag') { openPeople(); peopleTab('tags'); }
+  else if (actor) { viewProfile(actor); }
+}
+
 // ── SOCIAL PHASE B: tagging (send a pre-filled game/momnt to a friend) ─
 var _tagKind = '';       // 'game' | 'momnt' being tagged
 var _tagSnapshot = null; // the snapshot to send
@@ -7110,6 +7224,8 @@ function enterApp(session) {
     LS.save('owner', userId);   // tag this browser's cache as owned by the current account
     syncProfile();   // create the public profile row on first social login (ports existing users), or refresh it
     loadMutes();     // cache the accounts you've muted so tags/notifications can filter them
+    loadNotifCount();  // light up the notifications bell with the unread count
+    if (!_notifPoll) _notifPoll = setInterval(function() { if (userId) loadNotifCount(); }, 60000);
   });
 }
 
