@@ -1154,6 +1154,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="gl-search" placeholder="Search team, venue, opponent…" oninput="renderGameLog()" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px 9px 34px;color:var(--text);font-size:13px;outline:none;">
     </div>
+    <select id="gl-month" onchange="renderGameLog()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;cursor:pointer;">
+      <option value="all">all dates</option>
+    </select>
     <select id="gl-sort" onchange="renderGameLog()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;cursor:pointer;">
       <option value="date-desc">newest first</option>
       <option value="date-asc">oldest first</option>
@@ -2996,31 +2999,10 @@ function renderPlayers() {
       html += '</div>';
     }
 
-    var roster = players.slice().sort(bySort);
-    var posList = [];
-    roster.forEach(function(p){ var po = p.pos || '—'; if (posList.indexOf(po) === -1) posList.push(po); });
-    posList.sort(function(a,b){ var d = posPriority(lg,a) - posPriority(lg,b); return d !== 0 ? d : a.localeCompare(b); });
-    var sel = playerPosFilter[lg] || 'all';
-    if (sel !== 'all' && posList.indexOf(sel) === -1) sel = 'all';
-
-    html += '<div class="pl-sub-hdr">all '+meta.label+' players seen</div>';
-    html += '<div class="posfilt-row"><span class="posfilt'+(sel==='all'?' on':'')+'" onclick="setPosFilter(\''+lg+'\',\'all\')">ALL</span>'
-      + posList.map(function(po){ return '<span class="posfilt'+(sel===po?' on':'')+'" onclick="setPosFilter(\''+lg+'\',\''+po+'\')">'+po+'</span>'; }).join('')
-      + '</div>';
-
-    function renderGroup(po, showHdr) {
-      var group = roster.filter(function(p){ return (p.pos||'—') === po; });
-      var key = lg+':'+po, expanded = expandedPlayerPos[key];
-      var shown = expanded ? group : group.slice(0, POS_CAP);
-      var out = showHdr ? '<div class="pl-pos-hdr">'+po+' <span>'+group.length+'</span></div>' : '';
-      out += '<div class="roster">'+shown.map(rosterCardHtml).join('')+'</div>';
-      if (group.length > POS_CAP && !expanded) out += '<button class="pl-more" onclick="expandPlayerPos(\''+key+'\')">view all '+group.length+' '+po+' →</button>';
-      return out;
-    }
-    if (sel === 'all') {
-      posList.forEach(function(po){ html += renderGroup(po, true); });
-    } else {
-      html += renderGroup(sel, false);
+    // Full per-position roster removed — the tab is now leaderboards + search.
+    // (Search above surfaces any individual player you've seen.)
+    if (!boards.length) {
+      html += '<div style="color:var(--text3);font-size:12px;padding:4px 0 2px;">No rankable stats yet — use the search above to find a specific player you’ve seen.</div>';
     }
   });
 
@@ -3668,6 +3650,22 @@ function computeMyResult(g) {
 }
 
 // Render the full game log grouped by year
+// Populate the month dropdown from the distinct year-months present in the log,
+// preserving the current selection (so typing in search doesn't reset it).
+function populateMonthFilter() {
+  var sel = document.getElementById('gl-month');
+  if (!sel) return;
+  var cur = sel.value || 'all';
+  var months = {};
+  savedGames.forEach(function(g){ if (g.date) months[g.date.slice(0,7)] = true; });
+  var keys = Object.keys(months).sort().reverse();
+  sel.innerHTML = '<option value="all">all dates</option>' + keys.map(function(k){
+    var d = new Date(k + '-01T12:00:00');
+    return '<option value="' + k + '">' + d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) + '</option>';
+  }).join('');
+  sel.value = (cur === 'all' || keys.indexOf(cur) > -1) ? cur : 'all';
+}
+
 function renderGameLog() {
   var list = document.getElementById('loglist');
   if (!list) return;
@@ -3684,17 +3682,21 @@ function renderGameLog() {
       + '<button class="vault-empty-btn" onclick="openSchedModal()">+ log your first game</button></div></div>';
     return;
   }
-  // Search query + sort mode
+  // Search query + sort mode + month filter
   var searchEl = document.getElementById('gl-search');
   var q = searchEl ? searchEl.value.trim().toLowerCase() : '';
   var sortEl = document.getElementById('gl-sort');
   var sortMode = sortEl ? sortEl.value : 'date-desc';
+  populateMonthFilter();
+  var monthEl = document.getElementById('gl-month');
+  var monthVal = monthEl ? monthEl.value : 'all';
 
-  // Apply active filter + account-wide league filter + search
+  // Apply active filter + account-wide league filter + month + search
   var filtered = savedGames.map(canonicalGame).filter(function(g){
     if (!enabledLeagues.has((g.league||'').toUpperCase())) return false;
     if (gameLogFilter === 'wins') { if (computeMyResult(g) !== 'W') return false; }
     else if (gameLogFilter !== 'all') { if (g.league !== gameLogFilter.toUpperCase()) return false; }
+    if (monthVal !== 'all' && (g.date || '').slice(0, 7) !== monthVal) return false;
     if (q) {
       var hay = [g.homeTeam, g.awayTeam, g.myTeam, g.venue, g.opponent, g.companions, g.notes].join(' ').toLowerCase();
       if (hay.indexOf(q) === -1) return false;
