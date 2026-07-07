@@ -690,6 +690,17 @@ textarea.mi{resize:none;height:68px;}
 .pm-av-remove:hover{color:#ff6b6b;}
 .pm-signout{width:100%;background:none;border:1px solid var(--border2);border-radius:10px;padding:11px;color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:10px;}
 .pm-signout:hover{border-color:#ff6b6b;color:#ff6b6b;}
+.pm-switch-row{display:flex;align-items:center;gap:12px;margin:14px 0 4px;cursor:pointer;}
+.pm-switch-txt{flex:1;min-width:0;}
+.pm-switch-title{font-size:13px;font-weight:600;}
+.pm-switch-sub{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.35;}
+.pm-switch{width:42px;height:24px;border-radius:14px;background:var(--bg4);border:1px solid var(--border2);flex-shrink:0;position:relative;transition:background .15s,border-color .15s;}
+.pm-switch.on{background:var(--accent);border-color:var(--accent);}
+.pm-switch-knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s;}
+.pm-switch.on .pm-switch-knob{left:20px;}
+.pm-manage-row{margin-top:12px;}
+.pm-manage-btn{width:100%;background:none;border:1px solid var(--border2);border-radius:10px;padding:10px;color:var(--text2);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;}
+.pm-manage-btn:hover{border-color:var(--accent);color:var(--text);}
 /* Find-people search modal */
 .pr-search-wrap{position:relative;margin-bottom:8px;}
 .pr-search{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:11px 12px 11px 36px;color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box;}
@@ -827,6 +838,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <input class="ob-input" id="pm-display" type="text" maxlength="32" placeholder="Display name" autocomplete="off">
     <label class="pm-label">Username</label>
     <input class="ob-input" id="pm-handle" type="text" maxlength="24" placeholder="@handle" autocomplete="off">
+    <div class="pm-switch-row" onclick="togglePmPrivate()">
+      <div class="pm-switch-txt">
+        <div class="pm-switch-title">Private account</div>
+        <div class="pm-switch-sub">People must request to follow you. Your stats stay visible to logged-in users.</div>
+      </div>
+      <div class="pm-switch" id="pm-private-switch"><div class="pm-switch-knob"></div></div>
+    </div>
     <div class="auth-msg" id="pm-msg" style="min-height:0;margin-bottom:2px;"></div>
     <button class="ob-btn" type="button" onclick="saveProfile()">Save</button>
     <button class="pm-signout" type="button" onclick="signOut()">Sign out</button>
@@ -5726,6 +5744,7 @@ let userFirstName = '';
 let userLastName = '';
 let userAvatar = '';     // profile photo as a downscaled JPEG data URI (synced in the bundle)
 let pmAvatar = '';       // pending avatar being edited in the Account panel
+let pmPrivate = false;   // pending private-account toggle in the Account panel
 let savedGames = [];
 let savedMoments = [];
 let visitedStadiums = new Set();
@@ -5980,7 +5999,24 @@ function openProfile() {
   pmAvatar = userAvatar || '';
   renderPmAvatar();
   setProfileMsg('');
+  // Privacy flag lives only in the DB (profiles.is_private) — fetch the current
+  // value and reflect it in the toggle. Default off until it loads.
+  pmPrivate = false;
+  renderPmPrivate();
+  if (supa && userId) {
+    supa.from('profiles').select('is_private').eq('user_id', userId).maybeSingle()
+      .then(function(res) { if (res && !res.error && res.data) { pmPrivate = !!res.data.is_private; renderPmPrivate(); } })
+      .catch(function() {});
+  }
   document.getElementById('profile-modal').classList.add('on');
+}
+function renderPmPrivate() {
+  var sw = document.getElementById('pm-private-switch');
+  if (sw) sw.classList.toggle('on', !!pmPrivate);
+}
+function togglePmPrivate() {
+  pmPrivate = !pmPrivate;
+  renderPmPrivate();
 }
 
 // Render the Account-panel avatar preview (photo if set, else initials).
@@ -6058,25 +6094,32 @@ function saveProfile() {
   userLastName = last;
   userName = disp;
   userAvatar = pmAvatar;
-  // Helper to commit the handle locally + persist + close.
-  var finish = function() { userHandle = handle; saveState(); applyUser(); setProfileMsg('Saved.', true); setTimeout(closeProfile, 700); };
-  // If the handle is unchanged, or we're offline/local-only, just save.
-  if (handle === userHandle || !supa || !userId) { finish(); return; }
-  // Handle changed → write it to profiles.username first so search works, and so
-  // we can catch a collision (unique index on lower(username)) before adopting it.
+  var handleChanged = (handle !== userHandle);
+  // Offline/local-only: adopt everything locally and save (is_private is DB-only).
+  if (!supa || !userId) { userHandle = handle; saveState(); applyUser(); setProfileMsg('Saved.', true); setTimeout(closeProfile, 700); return; }
+  // Persist is_private (always) + username (if changed) to profiles, catching a
+  // username collision (unique index on lower(username)) before adopting it.
   setProfileMsg('Saving…', true);
-  supa.from('profiles').update({ username: handle, updated_at: new Date().toISOString() }).eq('user_id', userId).select('username').maybeSingle()
+  var payload = { is_private: pmPrivate, updated_at: new Date().toISOString() };
+  if (handleChanged) payload.username = handle;
+  supa.from('profiles').update(payload).eq('user_id', userId).select('username').maybeSingle()
     .then(function(res) {
       if (res && res.error) {
         var taken = res.error.code === '23505' || /duplicate|unique/i.test(res.error.message || '');
-        // Keep the display/avatar changes (already set), but don't adopt a taken handle.
+        if (taken && handleChanged) {
+          // Still persist the privacy + field changes; just don't adopt the taken handle.
+          supa.from('profiles').update({ is_private: pmPrivate, updated_at: new Date().toISOString() }).eq('user_id', userId)
+            .then(function() { saveState(); applyUser(); }).catch(function() {});
+          setProfileMsg('That @handle is taken — try another.');
+          return;
+        }
         saveState(); applyUser();
-        setProfileMsg(taken ? 'That @handle is taken — try another.' : 'Couldn’t save your @handle — try again.');
+        setProfileMsg('Couldn’t save changes — try again.');
         return;
       }
-      finish();   // update succeeded (or the row will be created by syncProfile with this handle)
+      userHandle = handle; saveState(); applyUser(); setProfileMsg('Saved.', true); setTimeout(closeProfile, 700);
     })
-    .catch(function() { saveState(); applyUser(); setProfileMsg('Couldn’t save your @handle — try again.'); });
+    .catch(function() { saveState(); applyUser(); setProfileMsg('Couldn’t save changes — try again.'); });
 }
 
 // Full-screen loading overlay: covers first paint + the initial cloud fetch.
