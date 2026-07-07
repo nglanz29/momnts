@@ -125,7 +125,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .tk-date{font-family:var(--font-ui);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tk-match{display:flex;align-items:center;gap:11px;min-width:0;overflow:hidden;}
 .tk-match img{width:36px;height:36px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));}
-.tk-team{font-family:'Barlow Condensed','Inter',sans-serif;font-size:25px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.tk-team{font-family:'Barlow Condensed','Inter',sans-serif;font-size:25px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);white-space:normal;overflow-wrap:anywhere;line-height:1.02;min-width:0;}
 .tk-dot{font-family:'Barlow Condensed','Inter',sans-serif;font-size:19px;color:rgba(255,255,255,.5);flex-shrink:0;}
 .tk-venue{font-family:var(--font-ui);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tk-with{font-size:10px;font-style:italic;color:rgba(255,255,255,.82);text-shadow:0 1px 3px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -424,7 +424,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 
 /* MODAL */
 #modal{visibility:hidden;opacity:0;pointer-events:none;position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;transition:opacity .18s;}
-#mbox{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:26px;width:430px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.9);}
+#mbox{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:26px;width:430px;max-width:94vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.9);}
 .mhdr{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
 #mlogo{width:38px;height:38px;object-fit:contain;}
 #mteam{font-size:15px;font-weight:700;}
@@ -449,6 +449,8 @@ textarea.mi{resize:none;height:68px;}
 .fphoto-remove{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.7);border:none;color:#fff;font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .fphoto-remove:hover{background:rgba(0,0,0,.9);}
 .mbtns{display:flex;gap:9px;margin-top:18px;}
+/* On phones, stack the Date/Opponent pair so they don't crowd/overlap */
+@media (max-width:560px){.mg2{grid-template-columns:1fr;}}
 .mok{flex:1;background:var(--accent);border:none;border-radius:8px;padding:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;}
 .mok:hover{background:#18935d;}
 .mcan{background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 18px;color:var(--text2);font-size:14px;cursor:pointer;}
@@ -1591,9 +1593,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="mf"><label class="mlb2" id="fscore-away-lbl">Away score</label><input type="text" id="fscore-away" placeholder="0" class="mi" oninput="recalcResult()"></div>
       <div class="mf"><label class="mlb2">Result</label><select id="fres" class="mi"><option value="">—</option><option value="W">Win</option><option value="L">Loss</option><option value="T">Tie</option></select></div>
     </div>
-    <div class="mf"><label class="mlb2">Section / Seat</label><input type="text" id="fseat" placeholder="e.g. Section 114, Row G" class="mi"></div>
+    <div class="mg3">
+      <div class="mf"><label class="mlb2">Section</label><input type="text" id="fsection" placeholder="114" class="mi" autocapitalize="characters"></div>
+      <div class="mf"><label class="mlb2">Row</label><input type="text" id="frow" placeholder="G" class="mi" autocapitalize="characters"></div>
+      <div class="mf"><label class="mlb2">Seat</label><input type="text" id="fseat" placeholder="5" class="mi"></div>
+    </div>
     <div class="mf"><label class="mlb2">Who'd you go with?</label><input type="text" id="fcompanions" placeholder="e.g. Dad, the crew, college buddies" class="mi"></div>
-    <div class="mf"><label class="mlb2">Notes</label><textarea id="fnotes" class="mi" placeholder="Anything memorable..."></textarea></div>
+    <div class="mf"><label class="mlb2">Notes</label><textarea id="fnotes" class="mi" placeholder="Anything memorable..." autocapitalize="words"></textarea></div>
     <div class="mf">
       <label class="mlb2">Photo from the game</label>
       <div id="fphoto-zone" onclick="document.getElementById('fphoto-input').click()">
@@ -2348,6 +2354,8 @@ function openModal(pin, prefill) {
   var smNote = document.getElementById('fsave-momnt-note');
   if (smNote) smNote.textContent = curSaveMomnt ? ' (playoff games are always saved)' : '';
 
+  document.getElementById('fsection').value = '';
+  document.getElementById('frow').value = '';
   document.getElementById('fseat').value = '';
   document.getElementById('fcompanions').value = '';
   document.getElementById('fnotes').value = '';
@@ -3331,6 +3339,19 @@ function teamColorsFor(logoUrl, league) {
 }
 
 
+// Capitalize the first letter of every word (used for the "anything memorable" notes).
+function titleCaseWords(s) {
+  return ('' + (s || '')).replace(/(^|\s)(\S)/g, function(m, sp, ch) { return sp + ch.toUpperCase(); });
+}
+// Build a readable seat string from the section/row/seat parts (skips blanks).
+function combineSeat(section, row, seat) {
+  var parts = [];
+  if (section) parts.push('Sec ' + section);
+  if (row) parts.push('Row ' + row);
+  if (seat) parts.push('Seat ' + seat);
+  return parts.join(' · ');
+}
+
 function submitG() {
   const date=document.getElementById('fdate').value;
   const opp=document.getElementById('fopp').value.trim();
@@ -3338,9 +3359,12 @@ function submitG() {
   const res=document.getElementById('fres').value;
   const scoreHome=document.getElementById('fscore-home').value;
   const scoreAway=document.getElementById('fscore-away').value;
-  const seat=document.getElementById('fseat').value;
+  const section=document.getElementById('fsection').value.trim();
+  const row=document.getElementById('frow').value.trim();
+  const seatNum=document.getElementById('fseat').value.trim();
+  const seat=combineSeat(section, row, seatNum);
   const companions=document.getElementById('fcompanions').value.trim();
-  const notes=document.getElementById('fnotes').value;
+  const notes=titleCaseWords(document.getElementById('fnotes').value);
   const photo=curPhoto;
   let logo='',team='Game',venue='',league='',pinId=null,homeAway='',isPlayoff=false,eventId='',homeLogo='',oppLogo='',playoffRound='';
   if (curPin) {
@@ -3410,6 +3434,9 @@ function submitG() {
     scoreUs: us,
     scoreThem: them,
     seat: seat,
+    section: section,
+    row: row,
+    seatNum: seatNum,
     notes: notes,
     companions: companions,
     photo: photo,
