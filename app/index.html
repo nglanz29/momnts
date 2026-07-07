@@ -4716,6 +4716,110 @@ async function fetchGamePlayers(prefill) {
   }
 }
 
+// ── AUTO-REFETCH: fill in final score + stats for games logged pre-finish ──
+var REFETCH_SPORT = { NFL:'football/nfl', MLB:'baseball/mlb', NBA:'basketball/nba', NHL:'hockey/nhl' };
+var _refetchTimer = null;
+
+// Parse the top box-score performers out of an ESPN summary payload (no DOM).
+function parseSummaryPlayers(data, sportKey, game) {
+  var boxscore = (data && data.boxscore) || {};
+  var playerGroups = boxscore.players || [];
+  var seen = {}, raw = [];
+  var matchupTeams = playerGroups.map(function(tg){ return (tg.team && tg.team.displayName) || ''; }).filter(Boolean);
+  playerGroups.forEach(function(teamData){
+    var teamName = (teamData.team && teamData.team.displayName) || '';
+    var playerOpp = matchupTeams.find(function(t){ return t && t !== teamName; }) || game.opponent || '';
+    (teamData.statistics || []).forEach(function(statGroup){
+      var groupType = detectGroupType(sportKey, statGroup.name, statGroup.keys || []);
+      (statGroup.athletes || []).forEach(function(a){
+        var athlete = a.athlete || {};
+        var eid = athlete.id;
+        if (!eid || !athlete.displayName) return;
+        var stats = parseStats(groupType, a.stats || []);
+        if (!stats) return;
+        var score = prominenceScore(groupType, stats);
+        if (score < 0) return;
+        if (seen[eid]) { if (score > seen[eid]) seen[eid] = score; return; }
+        seen[eid] = score;
+        var pos = (athlete.position && (athlete.position.abbreviation || athlete.position.name)) || groupPosGuess(groupType);
+        raw.push({ id:'p'+eid, espnId:eid, sport:sportKey, name:athlete.displayName, team:teamName, pos:pos, score:score,
+          gameEntry:{ date:game.date, opponent:playerOpp, venue:game.venue||'', stats:stats, group:groupType } });
+      });
+    });
+  });
+  raw.sort(function(a,b){ return b.score - a.score; });
+  return raw;
+}
+
+// Merge a set of parsed players into the seen-live roster (dedupe by espnId+sport).
+function mergePlayersIntoList(players) {
+  players.forEach(function(p){
+    var ex = playerList.find(function(e){ return e.espnId == p.espnId && e.sport === p.sport; });
+    if (ex) {
+      if (!ex.games) ex.games = [];
+      var dupe = ex.games.some(function(x){ return x.date === p.gameEntry.date && x.opponent === p.gameEntry.opponent; });
+      if (!dupe) ex.games.push(p.gameEntry);
+      ex.seen = ex.games.length;
+    } else {
+      playerList.unshift({ id:p.id, espnId:p.espnId, sport:p.sport, name:p.name, team:p.team, pos:p.pos, seen:1, badge:'', fav:false, games:[p.gameEntry] });
+    }
+  });
+}
+
+// Re-fetch one game's final score + top performers from ESPN. cb(changed).
+function refetchGameResult(game, cb) {
+  var sport = REFETCH_SPORT[(game.league||'').toUpperCase()];
+  if (!sport || !game.eventId) { if (cb) cb(false); return; }
+  fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/summary?event=' + game.eventId)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var comp = data && data.header && data.header.competitions && data.header.competitions[0];
+      var stype = comp && comp.status && comp.status.type;
+      var done = stype && (stype.completed === true || stype.state === 'post');
+      if (!done) { if (cb) cb(false); return; }
+      var competitors = (comp && comp.competitors) || [];
+      var homeC = competitors.find(function(c){ return c.homeAway === 'home'; });
+      var awayC = competitors.find(function(c){ return c.homeAway === 'away'; });
+      if (homeC && homeC.score != null) game.homeScore = String(homeC.score);
+      if (awayC && awayC.score != null) game.awayScore = String(awayC.score);
+      if (game.homeAway === 'home') { game.scoreUs = game.homeScore; game.scoreThem = game.awayScore; }
+      else if (game.homeAway === 'away') { game.scoreUs = game.awayScore; game.scoreThem = game.homeScore; }
+      game.completed = true;
+      game.result = computeMyResult(game);
+      // Auto-attach top performers if none were captured at log time.
+      if (!game.players || !game.players.length) {
+        var players = parseSummaryPlayers(data, (game.league||'').toLowerCase(), game).slice(0, 10);
+        if (players.length) {
+          game.players = players.map(function(p){ return { espnId:p.espnId, sport:p.sport, name:p.name, pos:p.pos, team:p.team, stats:p.gameEntry.stats, group:p.gameEntry.group }; });
+          mergePlayersIntoList(players);
+        }
+      }
+      if (cb) cb(true);
+    })
+    .catch(function(){ if (cb) cb(false); });
+}
+
+// Scan the log for games that were logged before they finished and refresh them.
+function refetchIncompleteGames() {
+  var today = new Date().toISOString().slice(0, 10);
+  var pending = savedGames.filter(function(g){
+    return g && !g.completed && g.eventId && g.league && (g.date || '') <= today;
+  });
+  if (!pending.length) return;
+  var remaining = pending.length, changed = false;
+  pending.forEach(function(g){
+    refetchGameResult(g, function(didChange){
+      if (didChange) changed = true;
+      remaining--;
+      if (remaining === 0 && changed) {
+        savePlayerList();
+        saveState();
+        renderGameLog(); renderHome(); renderRecords(); renderPlayers(); renderPins();
+      }
+    });
+  });
+}
+
 function renderPfgList() {
   const list = document.getElementById('pfg-list');
   list.innerHTML = '';
@@ -7352,10 +7456,17 @@ function startApp() {
     renderGameLog();
     renderHome();
     routeInitial();   // open the tab named in the URL (deep link) + normalize the path
+    // Fill in final scores/stats for any games logged before they finished, then
+    // keep checking every 10 min while the app is open + whenever the tab refocuses.
+    refetchIncompleteGames();
+    if (!_refetchTimer) _refetchTimer = setInterval(refetchIncompleteGames, 600000);
   }
   // Seed the milestone baseline so already-earned milestones don't toast on next log
   _knownMilestones = computeMilestones().map(function(m){ return m.key; });
 }
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && savedGames.length) refetchIncompleteGames();
+});
 
 (function init() {
   // Apply brand logo images (embedded data URI)
