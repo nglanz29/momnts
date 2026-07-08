@@ -769,6 +769,20 @@ textarea.mi{resize:none;height:68px;}
 .pv-team{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 12px 5px 6px;font-size:12px;font-weight:600;}
 .pv-team img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
 .pv-empty-teams{font-size:12px;color:var(--text3);}
+.pv-private-note{font-size:12.5px;color:var(--text3);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-top:16px;line-height:1.4;}
+.pv-games{display:flex;flex-direction:column;gap:7px;}
+.pv-game{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;}
+.pv-g-teams{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;flex-wrap:wrap;}
+.pv-g-teams img{width:18px;height:18px;object-fit:contain;flex-shrink:0;}
+.pv-g-at{color:var(--text3);font-weight:400;margin:0 1px;}
+.pv-g-score{margin-left:auto;font-family:var(--font-display);font-weight:700;color:var(--text);white-space:nowrap;}
+.pv-g-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+.pv-momnts{display:flex;flex-direction:column;gap:7px;}
+.pv-momnt{display:flex;align-items:center;gap:11px;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--acc,var(--border2));border-radius:10px;padding:9px 12px;}
+.pv-m-medal{width:26px;height:26px;flex-shrink:0;color:var(--acc,var(--text2));display:flex;align-items:center;justify-content:center;}
+.pv-m-info{min-width:0;}
+.pv-m-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pv-m-sub{font-size:11px;color:var(--text3);margin-top:1px;}
 .pv-more{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
 .pv-more-btn{min-width:88px;}
 .pv-more-btn{flex:1;background:none;border:1px solid var(--border2);border-radius:9px;padding:9px;color:var(--text2);font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;}
@@ -6765,9 +6779,33 @@ function insertProfile(base, username, stats, attempt) {
 // Create or update this user's public profile row. Username + is_private are
 // owned by the user once set, so an existing row only has its display name,
 // avatar, and stats refreshed — never its handle or privacy flag.
+// The public showcase (recent games + pinned momnts) shown on your profile.
+// Lives in a separate RLS-gated table so private accounts only expose it to
+// accepted followers. Kept small (last 6 games, up to 5 pinned momnts).
+function buildShowcase() {
+  var recent = (savedGames || []).slice(0, 6).map(function(g) {
+    g = canonicalGame(g);
+    return { date:g.date, homeTeam:g.homeTeam, awayTeam:g.awayTeam, homeLogo:g.homeLogo||'', awayLogo:g.awayLogo||'',
+             homeScore:g.homeScore, awayScore:g.awayScore, league:g.league||'', myTeam:g.myTeam||'', venue:g.venue||'',
+             playoffRound:g.playoffRound||'', neutral:!!g.neutral };
+  });
+  var pins = (savedMoments || []).filter(function(m) { return m.pinned; }).slice(0, 5).map(function(m) {
+    return { title:m.title||'', date:m.date||'', category:m.category||'other', tier:m.tier||'', league:m.league||'', venue:m.venue||'' };
+  });
+  return { recent_games: recent, pinned_momnts: pins };
+}
+function syncShowcase() {
+  if (!supa || !userId) return;
+  var sc = buildShowcase();
+  supa.from('profile_showcase').upsert({ user_id: userId, recent_games: sc.recent_games, pinned_momnts: sc.pinned_momnts, updated_at: new Date().toISOString() })
+    .then(function(r) { if (r && r.error) { try { console.warn('momnts showcase sync failed:', r.error.message); } catch (e) {} } })
+    .catch(function() {});
+}
+
 function syncProfile() {
   if (!supa || !userId || !userName) return;   // wait until onboarding has set a name
   var stats = profileStats();
+  syncShowcase();   // publish recent games + pinned momnts (RLS-gated)
   supa.from('profiles').select('user_id').eq('user_id', userId).maybeSingle().then(function(res) {
     if (res && res.error) { try { console.warn('momnts profile lookup failed:', res.error.message); } catch (e) {} return; }
     if (res && res.data) {
@@ -7057,27 +7095,51 @@ function viewProfile(uid) {
   if (body) body.innerHTML = '<div class="pr-note">Loading…</div>';
   if (!supa || !userId) { if (body) body.innerHTML = '<div class="pr-note">Sign in to view profiles.</div>'; return; }
   supa.from('profiles')
-    .select('user_id,username,display_name,avatar,is_private,games_count,momnts_count,fav_teams')
+    .select('user_id,username,display_name,avatar,is_private,games_count,momnts_count,fav_teams,follower_count,following_count')
     .eq('user_id', uid).single()
     .then(function(res) {
       if ((res && res.error) || !res.data) { if (body && _pvUid === uid) body.innerHTML = '<div class="pr-note">Couldn’t load this profile.</div>'; return; }
       var p = res.data;
-      // Pull my follow status + whether I've blocked them, so the actions are accurate.
+      // Follow status, block/mute state, and the RLS-gated showcase (recent games
+      // + pinned momnts — the query returns nothing for a private non-follower).
       Promise.all([
         supa.from('follows').select('status').eq('follower_id', userId).eq('following_id', uid).maybeSingle(),
         supa.from('blocks').select('blocked_id').eq('blocker_id', userId).eq('blocked_id', uid).maybeSingle(),
-        supa.from('mutes').select('muted_id').eq('muter_id', userId).eq('muted_id', uid).maybeSingle()
+        supa.from('mutes').select('muted_id').eq('muter_id', userId).eq('muted_id', uid).maybeSingle(),
+        supa.from('profile_showcase').select('recent_games,pinned_momnts').eq('user_id', uid).maybeSingle()
       ]).then(function(rs) {
-        var fr = rs[0], br = rs[1], mr = rs[2];
+        var fr = rs[0], br = rs[1], mr = rs[2], sr = rs[3];
         if (fr && !fr.error && fr.data) _followState[uid] = fr.data.status; else delete _followState[uid];
         _pvBlocked = !!(br && !br.error && br.data);
         _pvMuted = !!(mr && !mr.error && mr.data);
-        if (_pvUid === uid) renderProfileView(p);
-      }).catch(function() { if (_pvUid === uid) renderProfileView(p); });
+        var showcase = (sr && !sr.error && sr.data) ? sr.data : null;
+        if (_pvUid === uid) renderProfileView(p, showcase);
+      }).catch(function() { if (_pvUid === uid) renderProfileView(p, null); });
     })
     .catch(function() { if (body && _pvUid === uid) body.innerHTML = '<div class="pr-note">Couldn’t load this profile.</div>'; });
 }
-function renderProfileView(p) {
+// Compact read-only recent-game row for another user's profile (from the showcase).
+function pvGameRowHTML(g) {
+  var away = escMomnt(g.awayTeam || ''), home = escMomnt(g.homeTeam || '');
+  var aLogo = g.awayLogo ? '<img src="' + escMomnt(g.awayLogo) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+  var hLogo = g.homeLogo ? '<img src="' + escMomnt(g.homeLogo) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+  var hasSc = (g.homeScore !== '' && g.homeScore != null && g.awayScore !== '' && g.awayScore != null);
+  var score = hasSc ? '<span class="pv-g-score">' + escMomnt(String(g.awayScore)) + '–' + escMomnt(String(g.homeScore)) + '</span>' : '';
+  var d = g.date ? new Date(g.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  var sub = [d, g.league, g.venue].filter(Boolean).map(escMomnt).join(' · ');
+  return '<div class="pv-game"><div class="pv-g-teams">' + aLogo + '<span>' + away + '</span><span class="pv-g-at">@</span>' + hLogo + '<span>' + home + '</span>' + score + '</div>'
+    + (sub ? '<div class="pv-g-sub">' + sub + '</div>' : '') + '</div>';
+}
+function pvMomntRowHTML(m) {
+  var meta = momntMeta(m);
+  var t = MOMNT_TIERS[meta.tier] || MOMNT_TIERS.notable;
+  var d = m.date ? new Date(m.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  var sub = [meta.tierLabel, d].filter(Boolean).map(escMomnt).join(' · ');
+  return '<div class="pv-momnt" style="--acc:' + t.color + ';"><div class="pv-m-medal">' + medallionSVG(m, 22) + '</div>'
+    + '<div class="pv-m-info"><div class="pv-m-title">' + escMomnt(m.title || 'Momnt') + '</div><div class="pv-m-sub">' + sub + '</div></div></div>';
+}
+
+function renderProfileView(p, showcase) {
   var body = document.getElementById('pv-body');
   if (!body) return;
   var uid = p.user_id;
@@ -7104,8 +7166,6 @@ function renderProfileView(p) {
       }).join('')
     : '<div class="pv-empty-teams">No favorite teams yet.</div>';
   var nameArg = (p.display_name || p.username || 'this account').replace(/'/g, "\\'");
-  // When blocked: no follow button, a note, and an Unblock action. Otherwise the
-  // follow button + a Block action.
   var actionBlock = _pvBlocked
     ? '<div class="pv-blocked-note">You’ve blocked this account. They can’t follow, tag, or find you.</div>'
     : '<div class="pv-action" id="pv-action">' + followBtnHTML(uid) + '</div>';
@@ -7113,22 +7173,36 @@ function renderProfileView(p) {
   var muteBtn = _pvMuted
     ? '<button class="pv-more-btn" type="button" onclick="unmuteUser(\'' + uid + '\')">Unmute</button>'
     : '<button class="pv-more-btn" type="button" onclick="muteUser(\'' + uid + '\')">Mute</button>';
-  // A blocked account is already fully cut off, so muting it is redundant — hide it.
   var moreRow = _pvBlocked
     ? '<div class="pv-more"><button class="pv-more-btn" type="button" onclick="unblockUser(\'' + uid + '\')">Unblock</button>' + reportBtn + '</div>'
     : '<div class="pv-more"><button class="pv-more-btn danger" type="button" onclick="confirmBlock(\'' + uid + '\',\'' + nameArg + '\')">Block</button>' + muteBtn + reportBtn + '</div>';
+
+  // Rich showcase — recent games + pinned momnts. Gated in the DB: for a private
+  // account the showcase query returns nothing unless you're an accepted follower.
+  var isFollower = _followState[uid] === 'accepted';
+  var richHtml = '';
+  if (showcase) {
+    var recent = Array.isArray(showcase.recent_games) ? showcase.recent_games : [];
+    var pins = Array.isArray(showcase.pinned_momnts) ? showcase.pinned_momnts : [];
+    if (recent.length) richHtml += '<div class="pv-sect-lbl">Recently attended</div><div class="pv-games">' + recent.map(pvGameRowHTML).join('') + '</div>';
+    if (pins.length) richHtml += '<div class="pv-sect-lbl">Pinned momnts</div><div class="pv-momnts">' + pins.map(pvMomntRowHTML).join('') + '</div>';
+  } else if (p.is_private && !isFollower && !_pvBlocked) {
+    richHtml = '<div class="pv-private-note"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>This account is private. Follow to see their games and momnts.</div>';
+  }
+
   body.innerHTML =
       '<div class="pv-top">' + avBig
     +   '<div class="pv-id"><div class="pv-name">' + name + lock + '</div><div class="pv-handle">' + handle + '</div></div>'
     + '</div>'
     + actionBlock
     + '<div class="pv-stats">'
+    +   '<div class="pv-stat"><div class="pv-num">' + (p.follower_count || 0) + '</div><div class="pv-lbl">followers</div></div>'
+    +   '<div class="pv-stat"><div class="pv-num">' + (p.following_count || 0) + '</div><div class="pv-lbl">following</div></div>'
     +   '<div class="pv-stat"><div class="pv-num">' + g + '</div><div class="pv-lbl">games</div></div>'
     +   '<div class="pv-stat"><div class="pv-num">' + m + '</div><div class="pv-lbl">momnts</div></div>'
-    +   '<div class="pv-stat"><div class="pv-num">' + teams.length + '</div><div class="pv-lbl">teams</div></div>'
     + '</div>'
-    + '<div class="pv-sect-lbl">Favorite teams</div>'
-    + '<div class="pv-teams">' + teamsHtml + '</div>'
+    + '<div class="pv-sect-lbl">Favorite teams</div><div class="pv-teams">' + teamsHtml + '</div>'
+    + richHtml
     + moreRow;
 }
 
