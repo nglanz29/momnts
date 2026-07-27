@@ -1,0 +1,27 @@
+name: supabase keepalive
+
+# Pings the Supabase database twice a week so the free-tier project
+# is never idle long enough to be auto-paused for inactivity.
+# The anon key + project URL are public by design (they ship in the
+# client app at momntsapp.com/app/), so they're safe to keep here.
+
+on:
+  schedule:
+    - cron: '0 12 * * 1,4'   # Mon & Thu, 12:00 UTC (max ~4-day gap; free tier pauses after 7)
+  workflow_dispatch:          # lets you run it manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ping supabase database
+        env:
+          SUPABASE_URL: https://ezselabyjixcnyavuwpi.supabase.co
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6c2VsYWJ5aml4Y255YXZ1d3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MDYxNDAsImV4cCI6MjA5ODM4MjE0MH0.f_ipGhIKJOcbRO6Hi8ECQ6oSEBE1Jq3UN6gMwxR-sxM
+        run: |
+          curl -sS -f \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/app_state?select=user_id&limit=1" \
+            -o /dev/null
+          echo "Supabase ping OK"
