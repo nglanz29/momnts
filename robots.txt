@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
+# The app is a private, auth-gated SPA. Its tab URLs (/app/game-log, /app/stadiums, …)
+# are client-side pushState paths with no real file, so a direct crawl hits 404.html
+# (served with a 404 status) and Search Console reports "Not found (404)". Blocking the
+# whole /app/ tree stops that crawl noise; the app is already <meta noindex> anyway. The
+# marketing landing (/) and /privacy.html stay crawlable and indexable.
+Disallow: /app/
 
 Sitemap: https://momntsapp.com/sitemap.xml
