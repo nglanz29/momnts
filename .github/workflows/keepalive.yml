@@ -1,27 +1,143 @@
 name: supabase keepalive
 
-# Pings the Supabase database twice a week so the free-tier project
-# is never idle long enough to be auto-paused for inactivity.
-# The anon key + project URL are public by design (they ship in the
-# client app at momntsapp.com/app/), so they're safe to keep here.
+# Keeps the Supabase free-tier project from being auto-paused for inactivity.
+#
+# History: an earlier version did a single read and still let the project pause
+# (Aug 2026). A successful read may not reset Supabase's inactivity timer, so
+# this version performs a real WRITE, runs daily instead of twice a week,
+# retries through transient DNS/network blips, and opens a GitHub issue when it
+# fails — the previous failure was silent and only surfaced via Supabase email.
+#
+# SETUP (once): run .github/keepalive-setup.sql in the Supabase SQL Editor to
+# create the public.keepalive table and its anon RLS policies. Without it the
+# write ping fails with a clear error pointing back here.
+#
+# The project URL + anon key are public by design (they ship in the client app
+# at momntsapp.com/app/), so they are safe to keep in this file.
 
 on:
   schedule:
-    - cron: '0 12 * * 1,4'   # Mon & Thu, 12:00 UTC (max ~4-day gap; free tier pauses after 7)
-  workflow_dispatch:          # lets you run it manually from the Actions tab
+    - cron: '0 12 * * *'   # daily, 12:00 UTC — well inside the ~7-day pause window
+  workflow_dispatch:        # run manually from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: ping supabase database
+      - name: ping supabase (write + read)
         env:
           SUPABASE_URL: https://ezselabyjixcnyavuwpi.supabase.co
           SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6c2VsYWJ5aml4Y255YXZ1d3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MDYxNDAsImV4cCI6MjA5ODM4MjE0MH0.f_ipGhIKJOcbRO6Hi8ECQ6oSEBE1Jq3UN6gMwxR-sxM
         run: |
-          curl -sS -f \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-            "${SUPABASE_URL}/rest/v1/app_state?select=user_id&limit=1" \
-            -o /dev/null
-          echo "Supabase ping OK"
+          set -uo pipefail
+
+          API="${SUPABASE_URL}/rest/v1"
+          AUTH=(-H "apikey: ${SUPABASE_ANON_KEY}" -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          LAST_CODE=""
+          LAST_BODY=""
+
+          # request <label> <method> <url> [extra curl args...]
+          # Retries 4x with backoff so a transient DNS/network blip doesn't page us.
+          request() {
+            local label="$1" method="$2" url="$3"; shift 3
+            local attempt out rc
+            for attempt in 1 2 3 4; do
+              out=$(curl -sS --max-time 30 -X "$method" "${AUTH[@]}" "$@" -w $'\n%{http_code}' "$url" 2>&1)
+              rc=$?
+              if [ "$rc" -ne 0 ]; then
+                echo "  attempt ${attempt}: network/DNS failure (curl exit ${rc}) — ${out}"
+              else
+                LAST_CODE="${out##*$'\n'}"
+                LAST_BODY="${out%$'\n'*}"
+                if [ "$LAST_CODE" -ge 200 ] && [ "$LAST_CODE" -lt 300 ]; then
+                  echo "  ✓ ${label} — HTTP ${LAST_CODE}"
+                  return 0
+                fi
+                echo "  attempt ${attempt}: HTTP ${LAST_CODE} — ${LAST_BODY}"
+              fi
+              if [ "$attempt" -lt 4 ]; then sleep $((attempt * 10)); fi
+            done
+            echo "::error::${label} failed after 4 attempts (last code: ${LAST_CODE:-none})"
+            return 1
+          }
+
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # 1. WRITE — the ping that actually generates database activity.
+          #    return=representation lets us confirm a row was really updated:
+          #    RLS denials and a missing row both come back as HTTP 200 with [].
+          echo "write ping -> keepalive.last_ping = ${NOW}"
+          if ! request "write ping" PATCH "${API}/keepalive?id=eq.1" \
+                 -H "Content-Type: application/json" \
+                 -H "Prefer: return=representation" \
+                 -d "{\"last_ping\":\"${NOW}\"}"; then
+            if [ "${LAST_CODE:-}" = "404" ]; then
+              echo "::error::Table public.keepalive not found. Run .github/keepalive-setup.sql in the Supabase SQL Editor."
+            fi
+            exit 1
+          fi
+
+          if [ "${LAST_BODY}" = "[]" ]; then
+            echo "::error::Write ping updated 0 rows — row id=1 is missing, or RLS blocks anon UPDATE. Re-run .github/keepalive-setup.sql."
+            exit 1
+          fi
+          echo "  updated: ${LAST_BODY}"
+
+          # 2. READ — confirms the real app schema is reachable, not just our table.
+          echo "read ping -> app_state"
+          request "read ping" GET "${API}/app_state?select=user_id&limit=1" || exit 1
+
+          echo "Supabase keepalive OK — wrote ${NOW}"
+
+  # The previous failure was silent: Supabase emailed before GitHub did.
+  # This makes a failed ping visible in the repo itself.
+  notify:
+    needs: ping
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: open or update a tracking issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          TITLE="Supabase keepalive is failing"
+
+          BODY=$(cat <<EOF
+          The scheduled Supabase keepalive ping failed.
+
+          **Run:** ${RUN_URL}
+
+          If the failure is \`Could not resolve host\`, the project is already
+          paused or deleted — DNS for the project hostname disappears when that
+          happens. A workflow cannot un-pause it; restore the project from the
+          Supabase dashboard.
+
+          Other likely causes:
+          - \`public.keepalive\` missing → run \`.github/keepalive-setup.sql\`
+          - write matched 0 rows → RLS policy missing or row id=1 deleted
+          EOF
+          )
+
+          # Don't let a transient API hiccup here mask the failure we came to report.
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "in:title $TITLE" --json number,title \
+            --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty" 2>/dev/null || true)
+
+          if [ -n "$EXISTING" ]; then
+            echo "Commenting on existing issue #${EXISTING}"
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "Failed again: ${RUN_URL}"
+          else
+            echo "Opening a new issue"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+          fi
