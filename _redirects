@@ -1,0 +1,21 @@
+# Cloudflare Pages redirects. Ignored by GitHub Pages, so this is safe to
+# land before the migration and takes effect once Cloudflare serves the site.
+#
+# The app is a single-page app: it rewrites tab URLs client-side with
+# history.pushState (/app/game-log, /app/stadiums, ...). Those paths have no
+# real file. On GitHub Pages that meant a genuine HTTP 404 plus a JS bounce
+# through 404.html. Cloudflare can serve the app shell directly with a 200,
+# which is what the app already expects — tabFromLocation() parses the slug
+# straight out of location.pathname, so deep links just work, with no
+# redirect flash and no 404 status.
+/app/*  /app/index.html  200
+
+# Keep the dev docs off the public web. Cloudflare Pages serves every file in
+# the repo, so without these CLAUDE.md (full build guide, architecture notes
+# and roadmap) would be readable at momntsapp.com/CLAUDE.md even with the
+# GitHub repo set to private. Repo visibility and site visibility are separate
+# things. The GitHub Pages equivalent lives in _config.yml.
+/CLAUDE.md   /404.html  404
+/README.md   /404.html  404
+/_config.yml /404.html  404
+/.github/*   /404.html  404

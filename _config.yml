@@ -1,0 +1,16 @@
+# Controls what GitHub Pages publishes.
+#
+# Without this file, Jekyll's defaults copy root .md files straight into the
+# built site — which puts CLAUDE.md (the full build guide, architecture notes
+# and roadmap) and README.md on the public web at momntsapp.com/CLAUDE.md,
+# readable by anyone, regardless of whether the GitHub repo is public or
+# private. Repo visibility and site visibility are separate things; this
+# handles the site side.
+#
+# Cloudflare Pages ignores this file — the equivalent rules for Cloudflare
+# live in _redirects.
+
+exclude:
+  - CLAUDE.md
+  - README.md
+  - .github/
