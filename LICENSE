@@ -1,0 +1,41 @@
+Copyright (c) 2026 Nik Glanz. All rights reserved.
+
+momnts — momntsapp.com
+
+This software and its source code, design, visual identity, and
+accompanying documentation (the "Software") are proprietary and
+confidential. They are NOT open source and are NOT licensed for reuse.
+
+Because the Software is a client-side web application, its source is
+necessarily transmitted to your browser in order to run. Receiving or
+viewing that source does NOT grant you any license to it. No right to
+copy, modify, redistribute, republish, host, sublicense, or create
+derivative works is granted, whether express or implied, by the act of
+accessing momntsapp.com or by the presence of the source in your browser.
+
+You may not, without prior written permission from the copyright holder:
+
+  1. Copy, reproduce, or redistribute the Software, in whole or in part.
+  2. Create derivative works from the Software or any portion of it.
+  3. Host, deploy, or make the Software publicly available under any
+     domain, name, or branding.
+  4. Reuse the Software's source code, layout, visual design, wordmark,
+     or brand assets in another product or service.
+  5. Remove, obscure, or alter this notice or any copyright notice
+     displayed within the Software.
+
+Viewing the source in a browser for the ordinary purpose of running the
+application, or for personal study and interoperability where such a
+right cannot lawfully be excluded, is permitted. Nothing here is intended
+to restrict rights that applicable law does not allow to be restricted.
+
+Third-party components are the property of their respective owners and
+are used under their own licenses. These include D3.js, the Supabase
+JavaScript client, Google Fonts, and data and imagery retrieved at
+runtime from ESPN's public endpoints. Team names, team logos, league
+marks, and player likenesses are the property of their respective
+owners and are used for identification purposes only. momnts is not
+affiliated with, endorsed by, or sponsored by any league, team, or
+player.
+
+For licensing inquiries, contact the copyright holder.

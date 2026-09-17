@@ -1,0 +1,18 @@
+# Cloudflare Pages response headers. Ignored by GitHub Pages, so this is safe
+# to land before the migration.
+
+/*
+  # Stops anyone embedding momnts in an iframe on their own domain and
+  # passing it off as theirs. frame-ancestors is the modern form;
+  # X-Frame-Options is kept for older browsers.
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
+
+  # Don't let browsers second-guess declared content types.
+  X-Content-Type-Options: nosniff
+
+  # Send the origin, not the full path, on cross-site navigations.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # The app needs none of these; deny them outright.
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
